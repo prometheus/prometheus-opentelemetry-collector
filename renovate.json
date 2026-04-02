@@ -1,0 +1,67 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "custom.regex"
+  ],
+  "prHourlyLimit": 1,
+  "prConcurrentLimit": 3,
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)builder-config\\.yaml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\r\\n|\\r|\\n)\\s*-?\\s*gomod:\\s+(?<depName>\\S+)\\s+(?<currentValue>\\S+)",
+        "(?:^|\\r\\n|\\r|\\n)\\s*-\\s*\\S+\\s*=>\\s*(?<depName>\\S+)\\s+(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "go"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)Makefile$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\r\\n|\\r|\\n)OCB_VERSION\\s*\\?=\\s*(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "go.opentelemetry.io/collector/cmd/builder",
+      "datasourceTemplate": "go"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDepNames": [
+        "/^go\\.opentelemetry\\.io\\/collector\\//"
+      ],
+      "groupName": "OpenTelemetry Collector modules"
+    },
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDepNames": [
+        "/^github\\.com\\/open-telemetry\\/opentelemetry-collector-contrib\\//"
+      ],
+      "groupName": "OpenTelemetry Collector contrib modules"
+    },
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDepNames": [
+        "/^github\\.com\\/prometheus-community\\/stackdriver_exporter/"
+      ],
+      "groupName": "stackdriver exporter modules"
+    }
+  ]
+}
