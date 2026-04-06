@@ -10,6 +10,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.149.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.149.0
   - gomod: github.com/prometheus-community/stackdriver_exporter/otelcollector v0.0.0-20260402175134-d4212ffb638d
+  - gomod: github.com/prometheus-community/yet-another-cloudwatch-exporter/otelcollector v0.0.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.149.0
@@ -38,3 +39,5 @@ telemetry:
 
 replaces:
   - github.com/prometheus-community/stackdriver_exporter => github.com/prometheus-community/stackdriver_exporter v0.18.1-0.20260402175134-d4212ffb638d
+  - github.com/prometheus-community/yet-another-cloudwatch-exporter/otelcollector => github.com/ArthurSens/yet-another-cloudwatch-exporter/otelcollector v0.0.0-20260406212151-23a2d067f411
+  - github.com/prometheus-community/yet-another-cloudwatch-exporter => github.com/ArthurSens/yet-another-cloudwatch-exporter v0.0.0-20260406212151-23a2d067f411

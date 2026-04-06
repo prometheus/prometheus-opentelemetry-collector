@@ -1,0 +1,22 @@
+receivers:
+  yace_exporter:
+    scrape_interval: 5m
+    exporter_config:
+      config_file: examples/yace/yace-config.yaml
+      aws_scrape_interval: 5m
+
+processors:
+  batch: {}
+
+exporters:
+  debug:
+    verbosity: basic
+  prometheus:
+    endpoint: 0.0.0.0:9464
+
+service:
+  pipelines:
+    metrics:
+      receivers: [yace_exporter]
+      processors: [batch]
+      exporters: [debug, prometheus]
