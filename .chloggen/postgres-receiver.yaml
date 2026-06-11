@@ -1,0 +1,6 @@
+change_type: new_component
+component: receiver/postgres
+note: Add the Postgres receiver for collecting PostgreSQL metrics through the embedded postgres_exporter.
+issues: [11]
+subtext:
+change_logs: []
