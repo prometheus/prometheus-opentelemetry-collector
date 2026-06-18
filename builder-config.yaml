@@ -9,6 +9,7 @@ receivers:
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.151.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.151.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.151.0
+  - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/elasticsearch v0.0.0
   - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver v0.0.0
   - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace v0.0.0
 
@@ -38,5 +39,6 @@ telemetry:
   import: go.opentelemetry.io/collector/service/telemetry/otelconftelemetry
 
 replaces:
+  - github.com/prometheus/prometheus-opentelemetry-collector/receivers/elasticsearch => ../receivers/elasticsearch
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver => ../receivers/stackdriver
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace => ../receivers/yace

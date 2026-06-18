@@ -1,0 +1,21 @@
+display_name: Elasticsearch Receiver
+type: elasticsearch_exporter
+github_project: prometheus/prometheus-opentelemetry-collector
+
+description: |
+  Receives Elasticsearch and OpenSearch metrics by running the Prometheus
+  [elasticsearch_exporter](https://github.com/prometheus-community/elasticsearch_exporter)
+  as an OpenTelemetry Collector receiver.
+
+status:
+  disable_codecov_badge: true
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [prometheus]
+  codeowners:
+    active: [ArthurSens]
+
+tests:
+  skip_lifecycle: true
+  skip_shutdown: true
