@@ -16,14 +16,17 @@ package postgres
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
+	"github.com/prometheus/prometheus-opentelemetry-collector/receivers/postgres/internal/metadata"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 )
@@ -91,6 +94,58 @@ func TestFactory_CreateMetrics(t *testing.T) {
 	}
 	if recv == nil {
 		t.Fatal("CreateMetrics() returned nil receiver")
+	}
+}
+
+func TestFactory_CreateMetrics_SemconvFeatureGateDisabled(t *testing.T) {
+	if err := featureGateSet(metadata.ReceiverPostgresExporterOTelSemanticConventionsFeatureGate.ID(), false); err != nil {
+		t.Fatal(err)
+	}
+
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig().(*prombridge.ReceiverConfig)
+	cfg.ExporterConfig = map[string]interface{}{
+		"data_source_names": []string{"host=localhost port=not-a-port user=postgres dbname=postgres sslmode=disable"},
+	}
+
+	_, err := factory.CreateMetrics(
+		context.Background(),
+		receivertest.NewNopSettings(receiverType),
+		cfg,
+		new(consumertest.MetricsSink),
+	)
+	if err != nil {
+		t.Fatalf("CreateMetrics() error = %v, want nil when semantic convention feature gate is disabled", err)
+	}
+}
+
+func TestFactory_CreateMetrics_SemconvFeatureGateEnabled(t *testing.T) {
+	if err := featureGateSet(metadata.ReceiverPostgresExporterOTelSemanticConventionsFeatureGate.ID(), true); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := featureGateSet(metadata.ReceiverPostgresExporterOTelSemanticConventionsFeatureGate.ID(), false); err != nil {
+			t.Errorf("reset feature gate: %v", err)
+		}
+	})
+
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig().(*prombridge.ReceiverConfig)
+	cfg.ExporterConfig = map[string]interface{}{
+		"data_source_names": []string{"host=localhost port=not-a-port user=postgres dbname=postgres sslmode=disable"},
+	}
+
+	_, err := factory.CreateMetrics(
+		context.Background(),
+		receivertest.NewNopSettings(receiverType),
+		cfg,
+		new(consumertest.MetricsSink),
+	)
+	if err == nil {
+		t.Fatal("CreateMetrics() error = nil, want semantic convention DSN parse error")
+	}
+	if !strings.Contains(err.Error(), "parse postgres data source name") {
+		t.Fatalf("CreateMetrics() error = %v, want semantic convention DSN parse error", err)
 	}
 }
 
@@ -243,4 +298,8 @@ func createMetricsError(exporterConfig map[string]interface{}) error {
 		new(consumertest.MetricsSink),
 	)
 	return err
+}
+
+func featureGateSet(id string, enabled bool) error {
+	return featuregate.GlobalRegistry().Set(id, enabled)
 }
