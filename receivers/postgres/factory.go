@@ -32,6 +32,7 @@ func newFactoryWithLifecycleManager(lifecycleManager prombridge.ExporterLifecycl
 		lifecycleManager,
 		configUnmarshaler{},
 		prombridge.WithDecodeHooks(mapstructure.StringToTimeDurationHookFunc()),
-		prombridge.WithOTTLStatementProvider(postgresOTTLStatements),
+		prombridge.WithOTTLStatementProvider(postgresqlSemconvOTTLStatements),
+		prombridge.WithResourceAttributeKeys(postgresqlResourceAttributeKeys()),
 	)
 }

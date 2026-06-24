@@ -14,56 +14,117 @@
 package postgres
 
 import (
-	"strings"
+	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/prometheus-community/postgres_exporter/config"
 )
 
-func TestPostgresOTTLStatements_DerivesServerAttributesFromDSN(t *testing.T) {
+func TestPostgreSQLSemconvOTTLStatements_DerivesServerAttributesFromURLDSN(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = []string{"postgresql://user:pass@db.example.test:15432/demo?sslmode=disable"}
+	cfg.DataSourceNames = []string{"postgresql://postgres:postgres@db.example.com:15432/demo?sslmode=disable"}
 
-	statements, err := postgresOTTLStatements(&cfg)
+	statements, err := postgresqlSemconvOTTLStatements(&cfg)
 	if err != nil {
-		t.Fatalf("postgresOTTLStatements() error = %v", err)
+		t.Fatalf("postgresqlSemconvOTTLStatements() error = %v", err)
 	}
 
-	if !containsStatement(statements.DataPointStatements, `set(datapoint.attributes["server.address"], "db.example.test")`) {
-		t.Fatalf("server.address statement not found in %#v", statements.DataPointStatements)
+	wantDatapointStatements := []string{
+		`set(datapoint.attributes["service.instance.id"], "db.example.com:15432")`,
+		`set(datapoint.attributes["server.address"], "db.example.com")`,
+		`set(datapoint.attributes["server.port"], 15432)`,
+		`set(datapoint.attributes["db.system.name"], "postgresql")`,
 	}
-	if !containsStatement(statements.DataPointStatements, `set(datapoint.attributes["server.port"], 15432)`) {
-		t.Fatalf("server.port statement not found in %#v", statements.DataPointStatements)
-	}
-	if !containsStatement(statements.DataPointStatements, `set(datapoint.attributes["db.client.connection.pool.name"], "db.example.test:15432/demo")`) {
-		t.Fatalf("pool-name statement not found in %#v", statements.DataPointStatements)
-	}
-}
-
-func TestPostgresOTTLStatements_DoesNotUsePrivateTransformProcessorFunctions(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = []string{"postgresql://user:pass@localhost:5432/demo?sslmode=disable"}
-
-	statements, err := postgresOTTLStatements(&cfg)
-	if err != nil {
-		t.Fatalf("postgresOTTLStatements() error = %v", err)
-	}
-
-	allStatements := strings.Join(append(statements.MetricStatements, statements.DataPointStatements...), "\n")
-	if strings.Contains(allStatements, "scale_metric") {
-		t.Fatal("embedded receiver OTTL must not use transformprocessor-internal scale_metric")
-	}
-}
-
-func containsStatement(statements []string, want string) bool {
-	for _, statement := range statements {
-		if strings.Contains(statement, want) {
-			return true
+	for _, want := range wantDatapointStatements {
+		if !slices.Contains(statements.DataPointStatements, want) {
+			t.Fatalf("DataPointStatements missing %q", want)
 		}
 	}
-	return false
+}
+
+func TestPostgreSQLSemconvOTTLStatements_OmitsPortAttributesWhenDSNHasNoPort(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.NewConfigWithDefaults()
+	cfg.DataSourceNames = []string{"postgresql://postgres:postgres@db.example.com/demo?sslmode=disable"}
+
+	statements, err := postgresqlSemconvOTTLStatements(&cfg)
+	if err != nil {
+		t.Fatalf("postgresqlSemconvOTTLStatements() error = %v", err)
+	}
+
+	if !slices.Contains(statements.DataPointStatements, `set(datapoint.attributes["server.address"], "db.example.com")`) {
+		t.Fatal("DataPointStatements missing server.address")
+	}
+	for _, unwanted := range []string{
+		`set(datapoint.attributes["service.instance.id"], "db.example.com:5432")`,
+		`set(datapoint.attributes["server.port"], 5432)`,
+	} {
+		if slices.Contains(statements.DataPointStatements, unwanted) {
+			t.Fatalf("DataPointStatements unexpectedly contained %q", unwanted)
+		}
+	}
+}
+
+func TestPostgresServerFromDSN(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		dsn  string
+		want postgresServer
+	}{
+		{
+			name: "url with explicit port",
+			dsn:  "postgresql://postgres:postgres@localhost:15432/demo?sslmode=disable",
+			want: postgresServer{address: "localhost", port: 15432},
+		},
+		{
+			name: "url without port leaves port unset",
+			dsn:  "postgresql://postgres:postgres@localhost/demo?sslmode=disable",
+			want: postgresServer{address: "localhost"},
+		},
+		{
+			name: "keyword dsn",
+			dsn:  "host=db.example.com port=25432 user=postgres dbname=demo sslmode=disable",
+			want: postgresServer{address: "db.example.com", port: 25432},
+		},
+		{
+			name: "keyword dsn without port leaves port unset",
+			dsn:  "host=db.example.com user=postgres dbname=demo sslmode=disable",
+			want: postgresServer{address: "db.example.com"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := postgresServerFromDSN(tt.dsn)
+			if err != nil {
+				t.Fatalf("postgresServerFromDSN() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("postgresServerFromDSN() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPostgreSQLResourceAttributeKeys(t *testing.T) {
+	t.Parallel()
+
+	want := []string{
+		"service.instance.id",
+		"server.address",
+		"server.port",
+		"postgresql.database.name",
+		"postgresql.schema.name",
+		"postgresql.table.name",
+		"postgresql.index.name",
+	}
+	if !reflect.DeepEqual(postgresqlResourceAttributeKeys(), want) {
+		t.Fatalf("postgresqlResourceAttributeKeys() = %#v, want %#v", postgresqlResourceAttributeKeys(), want)
+	}
 }
