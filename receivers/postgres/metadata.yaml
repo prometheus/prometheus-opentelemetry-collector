@@ -16,6 +16,13 @@ status:
   codeowners:
     active: [ArthurSens]
 
+feature_gates:
+  - id: receiver.postgresExporter.OTelSemanticConventions
+    description: Enables OpenTelemetry semantic convention transformations for postgres_exporter metrics.
+    stage: alpha
+    from_version: v0.1.0
+    reference_url: https://github.com/prometheus/prometheus-opentelemetry-collector/pull/21
+
 tests:
   skip_lifecycle: true
   skip_shutdown: true

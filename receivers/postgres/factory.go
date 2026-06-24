@@ -16,6 +16,7 @@ package postgres
 import (
 	"github.com/go-viper/mapstructure/v2"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
+	"github.com/prometheus/prometheus-opentelemetry-collector/receivers/postgres/internal/metadata"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/receiver"
 )
@@ -27,10 +28,21 @@ func NewFactory() receiver.Factory {
 }
 
 func newFactoryWithLifecycleManager(lifecycleManager prombridge.ExporterLifecycleManager) receiver.Factory {
+	opts := []prombridge.FactoryOption{
+		prombridge.WithDecodeHooks(mapstructure.StringToTimeDurationHookFunc()),
+	}
+	if metadata.ReceiverPostgresExporterOTelSemanticConventionsFeatureGate.IsEnabled() {
+		opts = append(
+			opts,
+			prombridge.WithOTTLStatementProvider(postgresqlSemconvOTTLStatements),
+			prombridge.WithResourceAttributeKeys(postgresqlResourceAttributeKeys()),
+		)
+	}
+
 	return prombridge.NewFactoryWithUntaggedConfig(
 		receiverType,
 		lifecycleManager,
 		configUnmarshaler{},
-		prombridge.WithDecodeHooks(mapstructure.StringToTimeDurationHookFunc()),
+		opts...,
 	)
 }
