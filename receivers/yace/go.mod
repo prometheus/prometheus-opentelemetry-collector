@@ -5,7 +5,7 @@ go 1.25.8
 require (
 	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.67.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/opentelemetry-collector-bridge v0.0.0-20260623121837-ed12d6387431
+	github.com/prometheus/opentelemetry-collector-bridge v0.1.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.61.0
 	go.opentelemetry.io/collector/component/componenttest v0.155.0
@@ -74,11 +74,11 @@ require (
 	go.opentelemetry.io/collector/pdata v1.61.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.155.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.61.0 // indirect
-	go.opentelemetry.io/collector/pipeline/xpipeline v0.154.0 // indirect
-	go.opentelemetry.io/collector/receiver/receiverhelper v0.154.0 // indirect
+	go.opentelemetry.io/collector/pipeline/xpipeline v0.155.0 // indirect
+	go.opentelemetry.io/collector/receiver/receiverhelper v0.155.0 // indirect
 	go.opentelemetry.io/collector/receiver/xreceiver v0.155.0 // indirect
-	go.opentelemetry.io/collector/scraper v0.154.0 // indirect
-	go.opentelemetry.io/collector/scraper/scraperhelper v0.154.0 // indirect
+	go.opentelemetry.io/collector/scraper v0.155.0 // indirect
+	go.opentelemetry.io/collector/scraper/scraperhelper v0.155.0 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.69.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
