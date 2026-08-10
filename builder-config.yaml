@@ -10,7 +10,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.155.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver v0.155.0
   - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver v0.0.0
-  - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace v0.0.0
+  - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace v0.1.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.155.0
