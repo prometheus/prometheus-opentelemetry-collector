@@ -10,7 +10,7 @@ An embeddable exporter separates three responsibilities:
 
 - `cmd/my_exporter`: CLI flags, environment variables, HTTP server setup, `/metrics`, web configuration, and process-level logging.
 - `config`: User-facing configuration, defaults, validation, and conversion to lower-level runtime options.
-- `collectors`: Implementation of Prometheus client_golang's Collector interface, while receiving an instance of Config for customization.
+- `collector`: Implementation of Prometheus client_golang's Collector interface, while receiving an instance of Config for customization.
 
 A good default layout looks like this:
 
@@ -21,17 +21,17 @@ A good default layout looks like this:
 │       └── main.go
 ├── config/
 │   └── config.go
-└── collectors/
+└── collector/
     ├── runtime.go
     ├── foo_collector.go
     └── bar_collector.go
 ```
 
-`Runtime` and the implementations of `prometheus.Collector` live in the same `collectors` package. Collector files should be named after the part of the exporter they collect.
+`Runtime` and the implementations of `prometheus.Collector` live in the same `collector` package. Collector files should be named after the part of the exporter they collect.
 
 It's not a requirement that an implementation strictly adhere to the structure above. The structure is intended to convey the separation of concerns helpful for building an embeddable exporter.
 
-A consumer of the exporter would be able to reference the config and collectors package without having dependencies on CLI logic.
+A consumer of the exporter would be able to reference the config and collector package without having dependencies on CLI logic.
 
 ### Config Package Contract
 
@@ -129,7 +129,7 @@ func (c *Config) Validated() bool {
 ```
 
 ```go
-package collectors
+package collector
 
 func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
     if !cfg.Validated() {
@@ -145,14 +145,14 @@ If using this pattern, `Validate()` should be a pointer method and set the marke
 
 This marker is a lifecycle guard, not an immutability guarantee. It is up to exporter maintainers to ensure immutability of the config between validation and runtime construction. A value copy prevents later changes to top-level scalar fields from affecting the runtime, but maps, slices, pointers, and other reference-bearing fields can still share mutable state. Copy or normalize those fields into private runtime state before using them concurrently.
 
-### Collectors Package Contract
+### Collector Package Contract
 
-The collectors package must have a struct and corresponding constructor that represents a single instance of that exporter. While the traditional exporter CLI runs only one instance, when embedded, several instances of the same exporter might run as part of the same binary.
+The collector package must have a struct and corresponding constructor that represents a single instance of that exporter. While the traditional exporter CLI runs only one instance, when embedded, several instances of the same exporter might run as part of the same binary.
 
-Stateful metrics exposed to provide visibility on the exporter instance itself must be fields inside this struct.
+Stateful metrics exposed to provide visibility on the exporter instance itself should be fields inside this struct.
 
 ```go
-// package collectors
+// package collector
 type Runtime struct {
     metrics *Metrics
     // exporter clients, config, logger, caches, etc.
@@ -309,7 +309,7 @@ if err := cfg.Validate(); err != nil {
     return err
 }
 
-runtime, err := collectors.NewRuntime(cfg, logger)
+runtime, err := collector.NewRuntime(cfg, logger)
 if err != nil {
     return err
 }
@@ -332,7 +332,7 @@ func MetricsHandler(w http.ResponseWriter, r *http.Request) {
 Good:
 
 ```go
-// package collectors
+// package collector
 type Runtime struct {
     // exporter clients, config, logger, caches, etc.
 }
@@ -346,7 +346,7 @@ func (r *Runtime) Collectors() []prometheus.Collector {
 }
 
 // cmd/my_exporter
-func MetricsHandler(runtime *collectors.Runtime, logger *slog.Logger) (http.Handler, error) {
+func MetricsHandler(runtime *collector.Runtime, logger *slog.Logger) (http.Handler, error) {
     registry := prometheus.NewRegistry()
 
     for _, c := range runtime.Collectors() {
