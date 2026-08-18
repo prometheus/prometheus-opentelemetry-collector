@@ -191,21 +191,18 @@ func (r *Runtime) Collectors() []prometheus.Collector {
 }
 ```
 
-Consumers can register that set in a registry:
+Consumers create and own a registry, then register the returned collector set:
 
 ```go
-func (r *Runtime) Registry() (*prometheus.Registry, error) {
-    registry := prometheus.NewRegistry()
-    for _, collector := range r.Collectors() {
-        if err := registry.Register(collector); err != nil {
-            return nil, err
-        }
+registry := prometheus.NewRegistry()
+for _, collector := range runtime.Collectors() {
+    if err := registry.Register(collector); err != nil {
+        return err
     }
-    return registry, nil
 }
 ```
 
-The `cmd/my_exporter` package can expose the registry with `promhttp.HandlerFor`, while downstream projects can use [prometheus-collector-bridge](https://github.com/prometheus/opentelemetry-collector-bridge) to adapt a `prometheus.Registry` into the OpenTelemetry Collector interfaces.
+The exporter library does not need to own the registry or expose a `Registry()` method. The `cmd/my_exporter` package can expose its registry with `promhttp.HandlerFor`, while downstream projects can use [prometheus-collector-bridge](https://github.com/prometheus/opentelemetry-collector-bridge) to adapt their registry into the OpenTelemetry Collector interfaces.
 
 ### Context and Shutdown
 
