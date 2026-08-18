@@ -138,7 +138,7 @@ func TestFactory_CreateMetrics_DecodesUntaggedConfig(t *testing.T) {
 		}
 	})
 
-	decoded, ok := lifecycleManager.cfg.(*config.Config)
+	decoded, ok := lifecycleManager.cfg.(*exporterConfig)
 	if !ok {
 		t.Fatalf("lifecycle received unexpected config type %T", lifecycleManager.cfg)
 	}
@@ -192,9 +192,6 @@ func TestFactory_CreateMetrics_DecodesUntaggedConfig(t *testing.T) {
 	}
 	if !reflect.DeepEqual(decoded.PGStatStatements.ExcludeUsers, []string{"replication"}) {
 		t.Errorf("PGStatStatements.ExcludeUsers = %v", decoded.PGStatStatements.ExcludeUsers)
-	}
-	if !decoded.Validated() {
-		t.Error("Validated() = false, want true")
 	}
 }
 

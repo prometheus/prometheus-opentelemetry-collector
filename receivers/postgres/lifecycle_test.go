@@ -54,12 +54,12 @@ func TestLifecycleManager_Start_RejectsWrongConfigType(t *testing.T) {
 func TestLifecycleManager_Start_ValidatesConfig(t *testing.T) {
 	t.Parallel()
 
-	defaults := config.NewConfigWithDefaults()
+	defaults := exporterConfig(config.NewConfigWithDefaults())
 	cfg := &defaults
 	cfg.MetricPrefix = ""
 
 	mgr := newLifecycleManager()
-	mgr.newRuntime = func(*config.Config, *slog.Logger) (runtime, error) {
+	mgr.newRuntime = func(config.ValidatedConfig, *slog.Logger) (runtime, error) {
 		t.Fatal("newRuntime should not be called for invalid config")
 		return nil, nil
 	}
@@ -73,16 +73,20 @@ func TestLifecycleManager_Start_ValidatesConfig(t *testing.T) {
 func TestLifecycleManager_Start_RegisterCollectors(t *testing.T) {
 	t.Parallel()
 
-	defaults := config.NewConfigWithDefaults()
+	defaults := exporterConfig(config.NewConfigWithDefaults())
 	cfg := &defaults
+	cfg.MetricPrefix = "custompg"
 	fake := &fakeRuntime{collectors: []prometheus.Collector{
 		prometheus.NewGauge(prometheus.GaugeOpts{Name: "postgres_receiver_test_metric", Help: "test metric"}),
 	}}
 
 	mgr := newLifecycleManager()
-	mgr.newRuntime = func(got *config.Config, logger *slog.Logger) (runtime, error) {
-		if got != cfg {
-			t.Fatalf("newRuntime config = %p, want %p", got, cfg)
+	mgr.newRuntime = func(got config.ValidatedConfig, logger *slog.Logger) (runtime, error) {
+		if !got.Valid() {
+			t.Fatal("newRuntime received a config that is not marked valid")
+		}
+		if prefix := got.Config().MetricPrefix; prefix != "custompg" {
+			t.Fatalf("newRuntime config MetricPrefix = %q, want %q", prefix, "custompg")
 		}
 		if logger == nil {
 			t.Fatal("newRuntime logger is nil")
@@ -106,7 +110,7 @@ func TestLifecycleManager_Start_RegisterCollectors(t *testing.T) {
 func TestLifecycleManager_Start_ClosesRuntimeOnRegisterError(t *testing.T) {
 	t.Parallel()
 
-	defaults := config.NewConfigWithDefaults()
+	defaults := exporterConfig(config.NewConfigWithDefaults())
 	cfg := &defaults
 	fake := &fakeRuntime{collectors: []prometheus.Collector{
 		prometheus.NewGauge(prometheus.GaugeOpts{Name: "duplicate_metric", Help: "test metric"}),
@@ -114,7 +118,7 @@ func TestLifecycleManager_Start_ClosesRuntimeOnRegisterError(t *testing.T) {
 	}}
 
 	mgr := newLifecycleManager()
-	mgr.newRuntime = func(*config.Config, *slog.Logger) (runtime, error) {
+	mgr.newRuntime = func(config.ValidatedConfig, *slog.Logger) (runtime, error) {
 		return fake, nil
 	}
 

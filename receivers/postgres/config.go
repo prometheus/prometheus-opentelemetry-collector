@@ -20,9 +20,26 @@ import (
 
 var _ prombridge.ConfigUnmarshaler = configUnmarshaler{}
 
+// exporterConfig is a distinct type over config.Config so it can carry a
+// Validate() error method. config.Config.Validate returns a ValidatedConfig,
+// which does not satisfy the interface the bridge asserts on to validate
+// exporter config at load time. Defining the type rather than embedding keeps
+// the field set identical, so the bridge decodes YAML and renders component
+// defaults exactly as it would for config.Config.
+type exporterConfig config.Config
+
+func (c *exporterConfig) Validate() error {
+	_, err := c.validated()
+	return err
+}
+
+func (c *exporterConfig) validated() (config.ValidatedConfig, error) {
+	return config.Config(*c).Validate()
+}
+
 type configUnmarshaler struct{}
 
 func (configUnmarshaler) GetConfigStruct() any {
-	cfg := config.NewConfigWithDefaults()
+	cfg := exporterConfig(config.NewConfigWithDefaults())
 	return &cfg
 }

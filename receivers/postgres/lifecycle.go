@@ -20,7 +20,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/prometheus-community/postgres_exporter/collectors"
+	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
@@ -37,7 +37,7 @@ type runtime interface {
 
 type lifecycleManager struct {
 	loggerFromSettings func(set receiver.Settings) *slog.Logger
-	newRuntime         func(cfg *config.Config, logger *slog.Logger) (runtime, error)
+	newRuntime         func(cfg config.ValidatedConfig, logger *slog.Logger) (runtime, error)
 
 	mu      sync.Mutex
 	runtime runtime
@@ -46,24 +46,23 @@ type lifecycleManager struct {
 func newLifecycleManager() *lifecycleManager {
 	return &lifecycleManager{
 		loggerFromSettings: collectorSlogLogger,
-		newRuntime: func(cfg *config.Config, logger *slog.Logger) (runtime, error) {
-			return collectors.NewRuntime(cfg, logger)
+		newRuntime: func(cfg config.ValidatedConfig, logger *slog.Logger) (runtime, error) {
+			return collector.NewRuntime(cfg, logger)
 		},
 	}
 }
 
 func (m *lifecycleManager) Start(_ context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, error) {
-	cfg, ok := exporterCfg.(*config.Config)
+	cfg, ok := exporterCfg.(*exporterConfig)
 	if !ok {
-		return nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
+		return nil, fmt.Errorf("expected *exporterConfig, got %T", exporterCfg)
 	}
-	if !cfg.Validated() {
-		if err := cfg.Validate(); err != nil {
-			return nil, fmt.Errorf("validate postgres config: %w", err)
-		}
+	validatedCfg, err := cfg.validated()
+	if err != nil {
+		return nil, fmt.Errorf("validate postgres config: %w", err)
 	}
 
-	runtime, err := m.newRuntime(cfg, m.loggerFromSettings(set))
+	runtime, err := m.newRuntime(validatedCfg, m.loggerFromSettings(set))
 	if err != nil {
 		return nil, fmt.Errorf("start postgres runtime: %w", err)
 	}
