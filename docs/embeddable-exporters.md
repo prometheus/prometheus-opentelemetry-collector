@@ -10,7 +10,7 @@ An embeddable exporter separates three responsibilities:
 
 - `cmd/my_exporter`: CLI flags, environment variables, HTTP server setup, `/metrics`, web configuration, and process-level logging.
 - `config`: User-facing configuration, defaults, validation, and conversion to lower-level runtime options.
-- `collectors`: Implementation of Prometheus client_golang's Collector interface, while receiving an instance of Config for customization.
+- `collector`: Implementation of Prometheus client_golang's Collector interface, while receiving an instance of Config for customization.
 
 A good default layout looks like this:
 
@@ -21,14 +21,17 @@ A good default layout looks like this:
 │       └── main.go
 ├── config/
 │   └── config.go
-└── collectors/
-    └── runtime.go
-    └── metrics.go
+└── collector/
+    ├── runtime.go
+    ├── foo_collector.go
+    └── bar_collector.go
 ```
+
+`Runtime` and the implementations of `prometheus.Collector` live in the same `collector` package. Collector files should be named after the part of the exporter they collect.
 
 It's not a requirement that an implementation strictly adhere to the structure above. The structure is intended to convey the separation of concerns helpful for building an embeddable exporter.
 
-A consumer of the exporter would be able to reference the config and collectors package without having dependencies on CLI logic.
+A consumer of the exporter would be able to reference the config and collector package without having dependencies on CLI logic.
 
 ### Config Package Contract
 
@@ -66,14 +69,34 @@ func NewConfigWithDefaults() Config {
 }
 ```
 
-Finally, the config package must validate constructed configs.
+Finally, the config package must validate constructed configs before runtime construction. Two validation patterns are described below.
+
+With this shape, the command package becomes a thin adapter from CLI flags into `config.Config`. Similarly, the OTel Collector implementation can stay in sync with the exporter for config creation and validation.
+
+### Config Validation
+
+The config package owns the definition of a valid configuration, so that the binary, the OTel Collector receiver, and every other consumer reach validity through the same code path.
+
+Two patterns are in use across Prometheus exporters and both are acceptable. Choose based on how much protection the runtime needs from changes made after validation and whether that protection is worth maintaining a deep copy.
+
+#### Validation marker
+
+`Config` carries a private marker that `Validate()` sets only after every check passes. The runtime constructor checks the marker before continuing, preventing callers from accidentally skipping validation.
 
 ```go
 package config
 
-import "fmt"
+type Config struct {
+    DataSourceName    string
+    MetricPrefix      string
+    CollectionTimeout time.Duration
 
-func (c Config) Validate() error {
+    validated bool
+}
+
+func (c *Config) Validate() error {
+    c.validated = false
+
     if c.MetricPrefix == "" {
         return fmt.Errorf("metric prefix must not be empty")
     }
@@ -83,72 +106,144 @@ func (c Config) Validate() error {
     if c.CollectionTimeout <= 0 {
         return fmt.Errorf("collection timeout must be greater than zero")
     }
-    return nil
-}
-```
-
-With this shape, the command package becomes a thin adapter from CLI flags into `config.Config`. Similarly, the OTel Collector implementation can stay in sync with the exporter for config creation and validation.
-
-```go
-cfg := config.NewConfigWithDefaults()
-cfg.DataSourceName = *dataSourceName // *dataSourceName can come from kingpin, YAML decoding or any other config strategy.
-
-if err := cfg.Validate(); err != nil {
-    return err
-}
-```
-
-### Runtime Requires Validated Config
-
-Runtime constructors should not silently assume that a config has gone through the exporter's validation path. Let `Validate()` mark successful validation and have `NewRuntime` fail clearly when that mark is missing.
-
-```go
-package config
-
-type Config struct {
-    MetricPrefix string
-
-    validated bool
-}
-
-func (c *Config) Validate() error {
-    if c.MetricPrefix == "" {
-        return fmt.Errorf("metric prefix must not be empty")
-    }
 
     c.validated = true
     return nil
 }
 
-func (c *Config) Validated() bool {
+func (c Config) Validated() bool {
     return c.validated
 }
 ```
 
 ```go
-package collectors
+cfg := config.NewConfigWithDefaults()
+cfg.DataSourceName = *dataSourceName
 
-func NewRuntime(cfg *config.Config, logger *slog.Logger) (*Runtime, error) {
+if err := cfg.Validate(); err != nil {
+    return err
+}
+
+runtime, err := collector.NewRuntime(cfg, logger)
+```
+
+```go
+package collector
+
+func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
     if !cfg.Validated() {
         return nil, fmt.Errorf("config has not been validated; call cfg.Validate before NewRuntime")
-        // optionally a panic would also work since this is clearly a bug.
     }
 
     // Resolve exporter dependencies here.
 }
 ```
 
-If using this pattern, `Validate()` should be a pointer method, set the marker only after all checks pass, and `NewRuntime` should return a clear error telling callers to call `Validate()` first. Keep the marker private; expose only a narrow `Validated()` method if another package needs to check it.
+Pros:
 
-This marker is a lifecycle guard, not an immutability guarantee. If exported config fields can be mutated after validation, callers can still invalidate the config.
-### Collectors Package Contract
+- A small API change prevents callers from accidentally skipping validation.
+- New fields only require validation checks; no deep-copy implementation has to stay in sync with `Config`.
+- Satisfies `interface{ Validate() error }`, which is what the [OpenTelemetry Collector bridge](https://github.com/prometheus/opentelemetry-collector-bridge) type-asserts on an exporter config before starting a receiver. No adapter is needed.
 
-The Collectors package must have a Struct and corresponding constructor that represents a single instance of that exporter. While the traditional exporter CLI runs only one instance, when embedded, several instances of the same exporter might run as part of the same binary.
+Cons:
 
-Metrics exposed to provide visibility on the exporter instance itself must be a field inside this struct.
+- The marker is a lifecycle guard, not an immutability guarantee. A caller can mutate exported fields after validation while the marker remains true.
+- Passing `Config` by value only isolates top-level scalar fields. Maps, slices, pointers, and other reference-bearing fields remain shared, so later writes can reach a running exporter.
+
+#### Validated config type
+
+`Validate()` returns a distinct type that only the config package can produce, and runtime constructors accept that type instead of `Config`.
 
 ```go
-// package collectors
+package config
+
+type ValidatedConfig struct {
+    inner Config
+    ok    bool
+}
+
+func (c Config) Validate() (ValidatedConfig, error) {
+    c = c.clone()
+    if err := c.validate(); err != nil {
+        return ValidatedConfig{}, err
+    }
+    return ValidatedConfig{inner: c, ok: true}, nil
+}
+
+func (c Config) clone() Config {
+    // Deep-copy every slice, map, pointer, and nested reference-bearing field.
+    return c
+}
+
+func (v ValidatedConfig) Valid() bool {
+    return v.ok
+}
+
+func (v ValidatedConfig) Config() Config {
+    return v.inner.clone()
+}
+```
+
+Cloning before the checks run means validation and the stored snapshot see the same data. Returning another clone from `Config()` keeps consumers from mutating that snapshot.
+
+```go
+cfg := config.NewConfigWithDefaults()
+cfg.DataSourceName = *dataSourceName
+
+validatedCfg, err := cfg.Validate()
+if err != nil {
+    return err
+}
+
+runtime, err := collector.NewRuntime(validatedCfg, logger)
+```
+
+```go
+package collector
+
+func NewRuntime(validatedCfg config.ValidatedConfig, logger *slog.Logger) (*Runtime, error) {
+    if !validatedCfg.Valid() {
+        return nil, fmt.Errorf("config has not been validated; obtain a ValidatedConfig from Config.Validate")
+    }
+    cfg := validatedCfg.Config()
+
+    // Resolve exporter dependencies here.
+}
+```
+
+Pros:
+
+- The type system enforces the lifecycle. `NewRuntime` cannot be called without a `ValidatedConfig`, and only `Validate()` can produce a non-zero one.
+- The runtime holds a private snapshot, so mutating the original `Config` afterwards cannot affect a running exporter.
+
+Cons:
+
+- `clone()` is a second place to update whenever a reference-bearing field is added, and forgetting it fails silently.
+- `Validate() (ValidatedConfig, error)` does not satisfy the bridge's `interface{ Validate() error }` validation hook.
+
+A bridge receiver can adapt this API with a distinct type over `Config`. Its bridge-facing `Validate()` discards the validated value, while runtime construction calls the exporter config's `Validate()` again and passes the resulting `ValidatedConfig` to `NewRuntime`:
+
+```go
+type exporterConfig config.Config
+
+func (c *exporterConfig) Validate() error {
+    _, err := config.Config(*c).Validate()
+    return err
+}
+```
+
+Neither pattern makes validation safe to run concurrently with mutation of the same config. The marker approach mutates the config directly, while the snapshot approach must read maps, slices, pointers, and their underlying data to clone them. Treat a config as fully constructed before it is validated.
+
+The remaining examples in this guide use the validation-marker pattern. Substitute `config.ValidatedConfig` if you adopt the second pattern.
+
+### Collector Package Contract
+
+The collector package must have a struct and corresponding constructor that represents a single instance of that exporter. While the traditional exporter CLI runs only one instance, when embedded, several instances of the same exporter might run as part of the same binary.
+
+Stateful metrics exposed to provide visibility on the exporter instance itself should be fields inside this struct.
+
+```go
+// package collector
 type Runtime struct {
     metrics *Metrics
     // exporter clients, config, logger, caches, etc.
@@ -158,23 +253,23 @@ type Metrics struct {
     counter   prometheus.Counter
     gauge     prometheus.Gauge
     histogram prometheus.Histogram
-    summary   proemtheus.Summary
+    summary   prometheus.Summary
 }
 
 func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
     // Resolve exporter dependencies here.
     return &Runtime{
         // other fields
-        metrics: Metrics{
+        metrics: &Metrics{
             // all metrics
-        }
+        },
     }, nil
 }
 ```
 
-In Prometheus client_golang, a [Collector](https://github.com/prometheus/client_golang/blob/c9d5bc4c50a9b0e54f032440064a4a464333a421/prometheus/collector.go#L16-L63) is an interface implemented by several different objects of that same SDK. The tradicional metrics types (`NewCounter`, `NewGauge`, `NewHistogram`, `NewSummary`), and their `Vec` representations all implement the Collector interface. After registering collectors into a `prometheus.Registry`, their `Collect()` methods are triggered once a Registry needs to `Gather()` metrics. A `Registry` also implements the Collector interface by calling the `Collect()` method of all its registered collectors.
+In Prometheus client_golang, a [Collector](https://github.com/prometheus/client_golang/blob/c9d5bc4c50a9b0e54f032440064a4a464333a421/prometheus/collector.go#L16-L63) is an interface implemented by several objects in that SDK. The traditional metric types (`NewCounter`, `NewGauge`, `NewHistogram`, `NewSummary`) and their `Vec` representations all implement the Collector interface. After registering collectors with a `prometheus.Registry`, their `Collect()` methods are triggered when the registry gathers metrics.
 
-The Runtime object must have a method `Collectors() []prometheus.Collector` that returns all the Collectors of a single Runtime. Since it's an interface, it can be a registry, a single metric, or whatever shape fits an exporter needs, as long as it implements the `prometheus.Collector` interface.
+The Runtime object must have a method `Collectors() []prometheus.Collector` that returns all the collectors of a single Runtime. A returned collector can be a custom collector, a single metric, or any other type that implements `prometheus.Collector`.
 
 ```go
 func (r *Runtime) Collectors() []prometheus.Collector {
@@ -182,27 +277,59 @@ func (r *Runtime) Collectors() []prometheus.Collector {
         r.metrics.counter,
         r.metrics.gauge,
         r.metrics.histogram,
-        r.metrics.summary
+        r.metrics.summary,
     }
 }
 ```
 
-or
+Consumers create and own a registry, then register the returned collector set:
 
 ```go
-func (r *Runtime) Collectors() prometheus.Collector {
-    r := prometheus.NewRegistry()
-    r.Register(
-        r.metrics.counter,
-        r.metrics.gauge,
-        r.metrics.histogram,
-        r.metrics.summary
-    )
-    return r
+registry := prometheus.NewRegistry()
+for _, collector := range runtime.Collectors() {
+    if err := registry.Register(collector); err != nil {
+        return err
+    }
 }
 ```
 
-The `cmd/my_exporter` package can choose to consume these collectors by passing it through a `promhttp.Handler`, while other downstream project can use [prometheus-collector-bridge](https://github.com/prometheus/opentelemetry-collector-bridge) to adapt a `prometheus.Registry` into the OpenTelemetry Collector interfaces.
+The exporter library does not need to own the registry or expose a `Registry()` method. The `cmd/my_exporter` package can expose its registry with `promhttp.HandlerFor`, while downstream projects can use [prometheus-collector-bridge](https://github.com/prometheus/opentelemetry-collector-bridge) to adapt their registry into the OpenTelemetry Collector interfaces.
+
+### Context and Shutdown
+
+Some collectors perform database queries or call remote APIs from `Collect()`. Those operations should be cancellable so an exporter can stop promptly.
+
+The context passed to an [OpenTelemetry component's `Start()` method](https://pkg.go.dev/go.opentelemetry.io/collector/component#Component) is intended for startup work and should not be retained for later scrapes. Instead, create a component-lifetime context and cancel function while starting the exporter, pass that context through the Runtime to its collectors, and cancel it from `Shutdown()`. Collectors should pass the context into every operation that supports cancellation.
+
+```go
+type Runtime struct {
+    cancel context.CancelFunc
+    foo    *FooCollector
+}
+
+func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
+    ctx, cancel := context.WithCancel(context.Background())
+    return &Runtime{
+        cancel: cancel,
+        foo:    NewFooCollector(ctx, cfg, logger),
+    }, nil
+}
+
+func (r *Runtime) Shutdown(context.Context) error {
+    r.cancel()
+    return nil
+}
+
+func (r *Runtime) Collectors() []prometheus.Collector {
+    return []prometheus.Collector{r.foo}
+}
+```
+
+An `ExporterLifecycleManager` embedding this Runtime should call `Runtime.Shutdown` from its own `Shutdown` method. The context received by `Shutdown` bounds shutdown work; it is not the context previously supplied to in-flight operations. Calling the Runtime's cancel function signals those operations to stop.
+
+The standard Prometheus interfaces do not carry a per-scrape context: `prometheus.Gatherer.Gather()` and `prometheus.Collector.Collect()` have no context parameter. Consequently, cancellation of an HTTP request or an OpenTelemetry scrape does not automatically reach work performed by a collector. Supporting cancellation for each individual scrape requires an exporter-specific context-aware API or another context propagation mechanism. The component-lifetime pattern above still ensures that `Shutdown()` can cancel in-flight work.
+
+An exporter that doesn't support cancelation of its gathering methods doesn't need to worry about this section.
 
 ## Anti-patterns and Preferred Designs
 
@@ -243,16 +370,9 @@ type Config struct {
 func NewConfigWithDefaults() Config {
     return Config{MetricPrefix: "pg"}
 }
-
-func (c Config) Validate() error {
-    if c.MetricPrefix == "" {
-        return fmt.Errorf("metric prefix must not be empty")
-    }
-    return nil
-}
 ```
 
-The binary can still use flags, but flags should construct the reusable configuration.
+The config package implements validation as described above. The binary can still use flags, but flags should construct the reusable configuration.
 
 ```go
 var dataSourceNames = kingpin.Flag("data-source-name", "Postgres DSN").
@@ -270,7 +390,7 @@ if err := cfg.Validate(); err != nil {
     return err
 }
 
-runtime, err := collectors.NewRuntime(cfg, logger)
+runtime, err := collector.NewRuntime(cfg, logger)
 if err != nil {
     return err
 }
@@ -293,7 +413,7 @@ func MetricsHandler(w http.ResponseWriter, r *http.Request) {
 Good:
 
 ```go
-// package collectors
+// package collector
 type Runtime struct {
     // exporter clients, config, logger, caches, etc.
 }
@@ -302,19 +422,15 @@ func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
     // Resolve exporter dependencies here.
 }
 
-func (r *Runtime) Collectors() ([]prometheus.Collector, error) {
+func (r *Runtime) Collectors() []prometheus.Collector {
     // Build collectors from exporter config and dependencies.
 }
 
 // cmd/my_exporter
-func MetricsHandler(runtime *collectors.Runtime, logger *slog.Logger) (http.Handler, error) {
+func MetricsHandler(runtime *collector.Runtime, logger *slog.Logger) (http.Handler, error) {
     registry := prometheus.NewRegistry()
 
-    cs, err := runtime.Collectors()
-    if err != nil {
-        return nil, err
-    }
-    for _, c := range cs {
+    for _, c := range runtime.Collectors() {
         if err := registry.Register(c); err != nil {
             return nil, err
         }
@@ -331,7 +447,7 @@ The bad example makes the HTTP handler the only reusable entrypoint. A collector
 
 ### Global and Package Variables
 
-Avoid declaring metrics as package variables and/or pre-registering them in the global `prometheus.DefaultRegisterer`. Remember that, while in the CLI there's only one instance of an exporter running, if the exporter is embedded as a Go library, it is very likely that multiple instances of the same exporter are running. Global and package variables create shared metric state and registration collisions in this case.
+Avoid declaring metric instances as package variables and/or pre-registering them in the global `prometheus.DefaultRegisterer`. Remember that, while in the CLI there's only one instance of an exporter running, if the exporter is embedded as a Go library, it is very likely that multiple instances of the same exporter are running. Global metric instances create shared state and global registration creates collisions in this case.
 
 Add a typed struct to your runtime, and create the metrics during Runtime initialization.
 
@@ -401,14 +517,41 @@ func newMetrics() *Metrics {
     return &Metrics{reloads: reloads}
 }
 
-func (r *Runtime) Collectors() ([]prometheus.Collector, error) {
+func (r *Runtime) Collectors() []prometheus.Collector {
     return []prometheus.Collector{
         r.metrics.reloads,
-    }, nil
+    }
 }
 
 func (r *Runtime) ReloadConfig() {
     r.metrics.reloads.Inc()
+}
+```
+
+Package-level `*prometheus.Desc` values are also safe when they contain only metadata shared by every exporter instance. Descriptors do not hold metric sample state and are immutable after construction. Keep descriptors on the collector instance when their names, help text, or constant labels depend on configuration for that instance.
+
+```go
+var reloadsDesc = prometheus.NewDesc(
+    "exporter_config_reloads_total",
+    "Total number of config reloads.",
+    nil,
+    nil,
+)
+
+type ReloadCollector struct {
+    reloads atomic.Uint64
+}
+
+func (c *ReloadCollector) Describe(ch chan<- *prometheus.Desc) {
+    ch <- reloadsDesc
+}
+
+func (c *ReloadCollector) Collect(ch chan<- prometheus.Metric) {
+    ch <- prometheus.MustNewConstMetric(
+        reloadsDesc,
+        prometheus.CounterValue,
+        float64(c.reloads.Load()),
+    )
 }
 ```
 
