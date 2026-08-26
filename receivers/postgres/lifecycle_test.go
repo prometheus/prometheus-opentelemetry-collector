@@ -56,6 +56,8 @@ func TestLifecycleManager_Start_ValidatesConfig(t *testing.T) {
 
 	defaults := exporterConfig(config.NewConfigWithDefaults())
 	cfg := &defaults
+	// postgres_exporter requires a non-empty metric prefix:
+	// https://github.com/prometheus-community/postgres_exporter/blob/5a2bd34f79f6/config/config.go#L130-L135
 	cfg.MetricPrefix = ""
 
 	mgr := newLifecycleManager()
