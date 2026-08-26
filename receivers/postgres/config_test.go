@@ -49,25 +49,25 @@ func TestExporterConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestExporterConfig_Validated(t *testing.T) {
+func TestExporterConfig_ValidateForRuntime(t *testing.T) {
 	t.Parallel()
 
 	cfg := exporterConfig(config.NewConfigWithDefaults())
 	cfg.MetricPrefix = "custompg"
 
-	validated, err := cfg.validated()
+	validated, err := cfg.validate()
 	if err != nil {
-		t.Fatalf("validated() error = %v", err)
+		t.Fatalf("validate() error = %v", err)
 	}
 	if !validated.Valid() {
-		t.Fatal("validated() returned a config that is not marked valid")
+		t.Fatal("validate() returned a config that is not marked valid")
 	}
 	if got := validated.Config().MetricPrefix; got != "custompg" {
 		t.Fatalf("validated config MetricPrefix = %q, want %q", got, "custompg")
 	}
 
 	cfg.MetricPrefix = ""
-	if _, err := cfg.validated(); err == nil {
-		t.Fatal("validated() error = nil, want error for empty metric prefix")
+	if _, err := cfg.validate(); err == nil {
+		t.Fatal("validate() error = nil, want error for empty metric prefix")
 	}
 }

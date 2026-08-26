@@ -29,11 +29,11 @@ var _ prombridge.ConfigUnmarshaler = configUnmarshaler{}
 type exporterConfig config.Config
 
 func (c *exporterConfig) Validate() error {
-	_, err := c.validated()
+	_, err := c.validate()
 	return err
 }
 
-func (c *exporterConfig) validated() (config.ValidatedConfig, error) {
+func (c *exporterConfig) validate() (config.ValidatedConfig, error) {
 	return config.Config(*c).Validate()
 }
 

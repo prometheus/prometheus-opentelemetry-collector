@@ -57,7 +57,7 @@ func (m *lifecycleManager) Start(_ context.Context, set receiver.Settings, expor
 	if !ok {
 		return nil, fmt.Errorf("expected *exporterConfig, got %T", exporterCfg)
 	}
-	validatedCfg, err := cfg.validated()
+	validatedCfg, err := cfg.validate()
 	if err != nil {
 		return nil, fmt.Errorf("validate postgres config: %w", err)
 	}
