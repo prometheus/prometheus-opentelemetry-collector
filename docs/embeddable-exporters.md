@@ -69,7 +69,7 @@ func NewConfigWithDefaults() Config {
 }
 ```
 
-Finally, the config package must validate constructed configs before runtime construction. Two validation patterns are described below.
+Finally, the config package must provide a way to validate a constructed config. Two config validation patterns are described below.
 
 With this shape, the command package becomes a thin adapter from CLI flags into `config.Config`. Similarly, the OTel Collector implementation can stay in sync with the exporter for config creation and validation.
 
@@ -79,9 +79,9 @@ The config package owns the definition of a valid configuration, so that the bin
 
 Two patterns are in use across Prometheus exporters and both are acceptable. Choose based on how much protection the runtime needs from changes made after validation and whether that protection is worth maintaining a deep copy.
 
-#### Validation marker
+#### Stateless Validation
 
-`Config` carries a private marker that `Validate()` sets only after every check passes. The runtime constructor checks the marker before continuing, preventing callers from accidentally skipping validation.
+`Config` has a `Validate()` method that checks the shape of the config without making network calls. The runtime calls `Validate()` itself before doing any work, so a caller cannot forget to.
 
 ```go
 package config
@@ -90,13 +90,9 @@ type Config struct {
     DataSourceName    string
     MetricPrefix      string
     CollectionTimeout time.Duration
-
-    validated bool
 }
 
-func (c *Config) Validate() error {
-    c.validated = false
-
+func (c Config) Validate() error {
     if c.MetricPrefix == "" {
         return fmt.Errorf("metric prefix must not be empty")
     }
@@ -106,23 +102,13 @@ func (c *Config) Validate() error {
     if c.CollectionTimeout <= 0 {
         return fmt.Errorf("collection timeout must be greater than zero")
     }
-
-    c.validated = true
     return nil
-}
-
-func (c Config) Validated() bool {
-    return c.validated
 }
 ```
 
 ```go
 cfg := config.NewConfigWithDefaults()
 cfg.DataSourceName = *dataSourceName
-
-if err := cfg.Validate(); err != nil {
-    return err
-}
 
 runtime, err := collector.NewRuntime(cfg, logger)
 ```
@@ -131,8 +117,8 @@ runtime, err := collector.NewRuntime(cfg, logger)
 package collector
 
 func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
-    if !cfg.Validated() {
-        return nil, fmt.Errorf("config has not been validated; call cfg.Validate before NewRuntime")
+    if err := cfg.Validate(); err != nil {
+        return nil, err
     }
 
     // Resolve exporter dependencies here.
@@ -141,16 +127,17 @@ func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
 
 Pros:
 
-- A small API change prevents callers from accidentally skipping validation.
+- Callers cannot skip validation, because the runtime always does it.
 - New fields only require validation checks; no deep-copy implementation has to stay in sync with `Config`.
 - Satisfies `interface{ Validate() error }`, which is what the [OpenTelemetry Collector bridge](https://github.com/prometheus/opentelemetry-collector-bridge) type-asserts on an exporter config before starting a receiver. No adapter is needed.
 
 Cons:
 
-- The marker is a lifecycle guard, not an immutability guarantee. A caller can mutate exported fields after validation while the marker remains true.
-- Passing `Config` by value only isolates top-level scalar fields. Maps, slices, pointers, and other reference-bearing fields remain shared, so later writes can reach a running exporter.
+- Nothing enforces the call. Every runtime constructor has to remember it, and one that forgets fails silently.
+- `Validate()` may run more than once. The bridge validates at factory time and the runtime validates again. As long as the checks stay cheap, the cost is a few CPU cycles.
+- The runtime does not own the configuration. An exporter developer must ensure the config is not mutated after it is handed to the runtime.
 
-#### Validated config type
+#### Validated Config Type
 
 `Validate()` returns a distinct type that only the config package can produce, and runtime constructors accept that type instead of `Config`.
 
@@ -232,9 +219,9 @@ func (c *exporterConfig) Validate() error {
 }
 ```
 
-Neither pattern makes validation safe to run concurrently with mutation of the same config. The marker approach mutates the config directly, while the snapshot approach must read maps, slices, pointers, and their underlying data to clone them. Treat a config as fully constructed before it is validated.
+Treat a config as fully constructed before it is validated. Neither pattern makes validation safe to run concurrently with mutation of the same config, since `clone()` has to read maps, slices, pointers, and their underlying data. Once a config is passed to a `Runtime` there is no supported way to change it either: the stateless pattern shares the caller's config with the runtime, and neither pattern offers a way to update a running `Runtime`.
 
-The remaining examples in this guide use the validation-marker pattern. Substitute `config.ValidatedConfig` if you adopt the second pattern.
+The remaining examples in this guide use the stateless pattern. Substitute `config.ValidatedConfig` if you adopt the validated config type.
 
 ### Collector Package Contract
 
@@ -257,6 +244,10 @@ type Metrics struct {
 }
 
 func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
+    if err := cfg.Validate(); err != nil {
+        return nil, err
+    }
+
     // Resolve exporter dependencies here.
     return &Runtime{
         // other fields
@@ -335,7 +326,7 @@ An exporter that doesn't support cancelation of its gathering methods doesn't ne
 
 ### Leaking CLI logic into downstream packages
 
-Avoid passing parsed CLI flags directly into Runtime constructors. Build a Config struct and validate it before constructing the Runtime.
+Avoid passing parsed CLI flags directly into Runtime constructors. Build a Config struct with a `Validate()` method instead.
 
 Bad:
 
@@ -349,9 +340,9 @@ func NewRuntime() (*Runtime, error) {
     return newRuntime(*dataSourceName, *metricPrefix)
 }
 
-func newRuntime(datasourceName, metricPrefix string) (*Runtime, error) {
-    if c.MetricPrefix == "" {
-        return fmt.Errorf("metric prefix must not be empty")
+func newRuntime(dataSourceName, metricPrefix string) (*Runtime, error) {
+    if metricPrefix == "" {
+        return nil, fmt.Errorf("metric prefix must not be empty")
     }
     // rest of the code
 }
@@ -370,9 +361,16 @@ type Config struct {
 func NewConfigWithDefaults() Config {
     return Config{MetricPrefix: "pg"}
 }
+
+func (c Config) Validate() error {
+    if c.MetricPrefix == "" {
+        return fmt.Errorf("metric prefix must not be empty")
+    }
+    return nil
+}
 ```
 
-The config package implements validation as described above. The binary can still use flags, but flags should construct the reusable configuration.
+The config is then validated when passed to the runtime. The binary can still use flags, but flags should construct the reusable configuration.
 
 ```go
 var dataSourceNames = kingpin.Flag("data-source-name", "Postgres DSN").
@@ -386,9 +384,6 @@ if err != nil {
 
 cfg := config.NewConfigWithDefaults()
 cfg.DataSourceNames = *dataSourceNames
-if err := cfg.Validate(); err != nil {
-    return err
-}
 
 runtime, err := collector.NewRuntime(cfg, logger)
 if err != nil {
