@@ -7,5 +7,6 @@ template_yaml: .chloggen/TEMPLATE.yaml
 summary_template: .chloggen/summary.tmpl
 components:
   - all
+  - receiver/blackbox
   - receiver/stackdriver
   - receiver/yace
