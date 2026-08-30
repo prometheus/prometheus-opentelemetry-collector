@@ -1,0 +1,23 @@
+display_name: Blackbox Exporter Receiver
+type: blackbox_exporter
+github_project: prometheus/prometheus-opentelemetry-collector
+
+description: |
+  Receives probe metrics by running the Prometheus
+  [blackbox_exporter](https://github.com/prometheus/blackbox_exporter)
+  as an OpenTelemetry Collector receiver.
+
+status:
+  disable_codecov_badge: true
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [prometheus]
+  codeowners:
+    active: [ArthurSens]
+
+tests:
+  # The receiver requires at least one target. End-to-end lifecycle coverage is
+  # provided by lifecycle_test.go with a local HTTP server.
+  skip_lifecycle: true
+  skip_shutdown: true
