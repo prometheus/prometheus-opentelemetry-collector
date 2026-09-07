@@ -1,7 +1,7 @@
 .PHONY: generate-distribution gogenerate mdatagen check-metadata build test check chlog-new chlog-validate chlog-preview chlog-update multimod-verify multimod-prerelease push-tags clean
 
 GOCMD ?= go
-OCB_VERSION ?= v0.155.0
+OCB_VERSION ?= v0.160.0
 SRC_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 MANIFEST := $(SRC_ROOT)/builder-config.yaml
 BUILD_DIR := $(SRC_ROOT)/_build
