@@ -8,5 +8,6 @@ summary_template: .chloggen/summary.tmpl
 components:
   - all
   - receiver/postgres
+  - receiver/blackbox
   - receiver/stackdriver
   - receiver/yace
