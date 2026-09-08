@@ -1,0 +1,21 @@
+display_name: Postgres Receiver
+type: postgres_exporter
+github_project: prometheus/prometheus-opentelemetry-collector
+
+description: |
+  Receives PostgreSQL metrics by running the Prometheus
+  [postgres_exporter](https://github.com/prometheus-community/postgres_exporter)
+  as an OpenTelemetry Collector receiver.
+
+status:
+  disable_codecov_badge: true
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [prometheus]
+  codeowners:
+    active: [ArthurSens]
+
+tests:
+  skip_lifecycle: true
+  skip_shutdown: true

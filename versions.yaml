@@ -3,6 +3,7 @@ module-sets:
   receivers:
     version: v0.1.0
     modules:
+      - github.com/prometheus/prometheus-opentelemetry-collector/receivers/postgres
       - github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver
       - github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace
 
