@@ -1,7 +1,7 @@
 # Module sets released from this repository.
 module-sets:
   receivers:
-    version: v0.1.0
+    version: v0.2.0
     modules:
       - github.com/prometheus/prometheus-opentelemetry-collector/receivers/postgres
       - github.com/prometheus/prometheus-opentelemetry-collector/receivers/blackbox
