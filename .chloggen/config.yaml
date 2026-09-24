@@ -11,3 +11,4 @@ components:
   - receiver/blackbox
   - receiver/stackdriver
   - receiver/yace
+  - receiver/mysqld
