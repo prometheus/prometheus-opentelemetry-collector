@@ -49,8 +49,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/prometheus-community/postgres_exporter v0.20.2-0.20260818133720-5a2bd34f79f6 h1:xkcQScbptp9zBuRDd7rJMkmgtdecvQ5WM25aplRpVPA=
-github.com/prometheus-community/postgres_exporter v0.20.2-0.20260818133720-5a2bd34f79f6/go.mod h1:wcfEQCqkKTfejoNlo8bKA0YvcE0uzLkGjZIbAO49M7k=
+github.com/prometheus-community/postgres_exporter v0.20.2-0.20260923130437-261c0d217c66 h1:lJJmgFLD0jFea5cauF+qZ9ffACv6Kc5opgaMqUqfJyA=
+github.com/prometheus-community/postgres_exporter v0.20.2-0.20260923130437-261c0d217c66/go.mod h1:GQkkxw0FZiOBOiwYRfZcwkemhEsOMfE/N1CzYve+jG8=
 github.com/prometheus/client_golang v1.24.1 h1:JnJkREXzWxUdCuPFpIWZiPispT9xVV59uiuyR2bPlnU=
 github.com/prometheus/client_golang v1.24.1/go.mod h1:F+oSRECHg4sse5ucfYpYDeIv/hu68Zo0uoHKetWnzcE=
 github.com/prometheus/client_model v0.6.2 h1:oBsgwpGs7iVziMvrGhE53c/GrLUsZdHnqNwqPLxwZyk=
