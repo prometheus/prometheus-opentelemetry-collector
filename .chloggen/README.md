@@ -31,4 +31,11 @@ Preview the generated changelog without modifying files:
 make chlog-preview
 ```
 
-Small internal-only maintenance changes may omit a changelog entry.
+Pull request CI requires at least one new `.chloggen/*.yaml` entry and rejects
+direct edits to `CHANGELOG.md`. It also validates the entries and checks links
+in the rendered preview.
+
+Small internal-only maintenance changes may omit a changelog entry. To skip
+the CI requirement, start the pull request title with `[chore]` or ask a
+maintainer to add the `Skip Changelog` label. Dependency update pull requests
+and pull requests opened by Dependabot or Renovate are also exempt.

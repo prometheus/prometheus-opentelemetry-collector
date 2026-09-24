@@ -1,0 +1,13 @@
+include_fragments = "none"
+
+accept = ["200..=299", "429"]
+
+exclude = [
+    "^http(s)?://localhost",
+    "^http(s)?://example.com",
+    # Slack returns 403 to automated link checkers.
+    "^https://cloud-native.slack.com",
+]
+
+# Better to be safe and avoid failures.
+max_retries = 6
