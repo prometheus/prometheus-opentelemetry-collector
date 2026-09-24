@@ -1,0 +1,6 @@
+change_type: new_component
+component: receiver/mysqld
+note: Add the MySQL receiver for collecting MySQL server metrics through the embedded mysqld_exporter.
+issues: [16]
+subtext:
+change_logs: []
