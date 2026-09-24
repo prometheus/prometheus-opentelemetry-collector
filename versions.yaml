@@ -8,6 +8,7 @@ module-sets:
       - github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver
       - github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace
       - github.com/prometheus/prometheus-opentelemetry-collector/receivers/ecs
+      - github.com/prometheus/prometheus-opentelemetry-collector/receivers/mysqld
 
 excluded-modules:
   - github.com/prometheus/prometheus-opentelemetry-collector/internal/tools
