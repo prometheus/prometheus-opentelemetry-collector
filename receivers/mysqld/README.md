@@ -5,7 +5,6 @@ Receives MySQL server metrics by running the Prometheus
 [mysqld_exporter](https://github.com/prometheus/mysqld_exporter)
 as an OpenTelemetry Collector receiver.
 
-
 | Status        |           |
 | ------------- |-----------|
 | Stability     | [development]: metrics   |
