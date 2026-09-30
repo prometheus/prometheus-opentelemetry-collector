@@ -1,0 +1,6 @@
+change_type: new_component
+component: receiver/ecs
+note: "Add an ecs_exporter receiver for collecting Amazon ECS task metrics."
+issues: [68]
+subtext:
+change_logs: [user]

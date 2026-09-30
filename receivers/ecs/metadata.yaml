@@ -1,0 +1,27 @@
+display_name: ECS Exporter Receiver
+type: ecs_exporter
+github_project: prometheus/prometheus-opentelemetry-collector
+
+description: |
+  Receives Amazon ECS task metrics by running the Prometheus
+  [ecs_exporter](https://github.com/prometheus-community/ecs_exporter)
+  as an OpenTelemetry Collector receiver.
+
+status:
+  disable_codecov_badge: true
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [prometheus]
+  codeowners:
+    active: [ArthurSens]
+
+tests:
+  # The receiver requires the ECS task metadata endpoint. End-to-end lifecycle
+  # coverage is provided by lifecycle_test.go with a local HTTP server.
+  skip_lifecycle: true
+  skip_shutdown: true
+  goleak:
+    ignore:
+      # amazon-ecs-agent starts asynchronous seelog workers during package init.
+      any: [github.com/cihub/seelog.(*asyncLoopLogger).processQueue]
