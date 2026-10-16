@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver"
@@ -32,12 +33,10 @@ type capturingLifecycleManager struct {
 	cfg any
 }
 
-func (m *capturingLifecycleManager) Start(_ context.Context, _ receiver.Settings, cfg any) (*prometheus.Registry, error) {
+func (m *capturingLifecycleManager) Start(_ context.Context, _ receiver.Settings, cfg any) (*prometheus.Registry, component.ShutdownFunc, error) {
 	m.cfg = cfg
-	return prometheus.NewRegistry(), nil
+	return prometheus.NewRegistry(), nil, nil
 }
-
-func (*capturingLifecycleManager) Shutdown(context.Context) error { return nil }
 
 func TestNewFactory(t *testing.T) {
 	t.Parallel()

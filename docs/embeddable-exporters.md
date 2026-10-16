@@ -316,7 +316,7 @@ func (r *Runtime) Collectors() []prometheus.Collector {
 }
 ```
 
-An `ExporterLifecycleManager` embedding this Runtime should call `Runtime.Shutdown` from its own `Shutdown` method. The context received by `Shutdown` bounds shutdown work; it is not the context previously supplied to in-flight operations. Calling the Runtime's cancel function signals those operations to stop.
+An `ExporterLifecycleManager` embedding this Runtime should return `Runtime.Shutdown` as the shutdown function from `Start`. The bridge retains that function on the receiver instance and calls it when that specific receiver stops. The context received by the shutdown function bounds shutdown work; it is not the context previously supplied to in-flight operations. Calling the Runtime's cancel function signals those operations to stop.
 
 The standard Prometheus interfaces do not carry a per-scrape context: `prometheus.Gatherer.Gather()` and `prometheus.Collector.Collect()` have no context parameter. Consequently, cancellation of an HTTP request or an OpenTelemetry scrape does not automatically reach work performed by a collector. Supporting cancellation for each individual scrape requires an exporter-specific context-aware API or another context propagation mechanism. The component-lifetime pattern above still ensures that `Shutdown()` can cancel in-flight work.
 

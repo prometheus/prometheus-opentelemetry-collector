@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus-community/stackdriver_exporter/delta"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap/exp/zapslog"
 )
@@ -38,33 +39,31 @@ func newLifecycleManager() *lifecycleManager {
 	return &lifecycleManager{loggerFromSettings: collectorSlogLogger}
 }
 
-func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, error) {
+func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, component.ShutdownFunc, error) {
 	cfg, ok := exporterCfg.(*config.Config)
 	if !ok {
-		return nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
+		return nil, nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
 	}
 
 	logger := m.loggerFromSettings(set)
 	runtime, err := collectors.NewRuntime(ctx, logger, cfg, delta.NewInMemoryCounterStore, delta.NewInMemoryHistogramStore)
 	if err != nil {
-		return nil, fmt.Errorf("start stackdriver runtime: %w", err)
+		return nil, nil, fmt.Errorf("start stackdriver runtime: %w", err)
 	}
 
 	collectorList, err := runtime.Collectors()
 	if err != nil {
-		return nil, fmt.Errorf("build collectors: %w", err)
+		return nil, nil, fmt.Errorf("build collectors: %w", err)
 	}
 
 	registry := prometheus.NewRegistry()
 	for _, c := range collectorList {
 		if err := registry.Register(c); err != nil {
-			return nil, fmt.Errorf("register collector: %w", err)
+			return nil, nil, fmt.Errorf("register collector: %w", err)
 		}
 	}
-	return registry, nil
+	return registry, nil, nil
 }
-
-func (m *lifecycleManager) Shutdown(context.Context) error { return nil }
 
 func collectorSlogLogger(set receiver.Settings) *slog.Logger {
 	if set.Logger == nil {

@@ -40,7 +40,7 @@ func TestLifecycleManagerEndToEnd(t *testing.T) {
 	}
 
 	manager := newLifecycleManager()
-	registry, err := manager.Start(
+	registry, shutdown, err := manager.Start(
 		context.Background(),
 		receivertest.NewNopSettings(component.MustNewType("blackbox_exporter")),
 		cfg,
@@ -48,7 +48,11 @@ func TestLifecycleManagerEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
-	defer manager.Shutdown(context.Background())
+	defer func() {
+		if err := shutdown(context.Background()); err != nil {
+			t.Errorf("shutdown() error = %v", err)
+		}
+	}()
 
 	families, err := registry.Gather()
 	if err != nil {
@@ -66,7 +70,7 @@ func TestLifecycleManagerEndToEnd(t *testing.T) {
 
 func TestLifecycleManagerRejectsWrongConfig(t *testing.T) {
 	manager := newLifecycleManager()
-	_, err := manager.Start(
+	_, _, err := manager.Start(
 		context.Background(),
 		receivertest.NewNopSettings(component.MustNewType("blackbox_exporter")),
 		struct{}{},
