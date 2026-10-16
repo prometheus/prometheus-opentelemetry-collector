@@ -30,17 +30,8 @@ func TestLifecycleManager_Start_RejectsWrongConfigType(t *testing.T) {
 
 	mgr := newLifecycleManager()
 
-	_, err := mgr.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), wrongConfig{})
+	_, _, err := mgr.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), wrongConfig{})
 	if err == nil {
 		t.Fatal("Start() expected error for wrong config type, got nil")
-	}
-}
-
-func TestLifecycleManager_Shutdown(t *testing.T) {
-	t.Parallel()
-
-	mgr := newLifecycleManager()
-	if err := mgr.Shutdown(context.Background()); err != nil {
-		t.Fatalf("Shutdown() error = %v", err)
 	}
 }

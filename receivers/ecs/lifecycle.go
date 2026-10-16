@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"sync"
 
 	"github.com/prometheus-community/ecs_exporter/ecscollector"
 	"github.com/prometheus-community/ecs_exporter/ecsmetadata"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap/exp/zapslog"
 )
@@ -29,9 +29,6 @@ type lifecycleManager struct {
 	loggerFromSettings       func(receiver.Settings) *slog.Logger
 	newClientFromEnvironment func() (*ecsmetadata.Client, error)
 	newRuntime               func(*ecsmetadata.Client, *slog.Logger) runtime
-
-	mu      sync.Mutex
-	runtime runtime
 }
 
 func newLifecycleManager() *lifecycleManager {
@@ -44,14 +41,14 @@ func newLifecycleManager() *lifecycleManager {
 	}
 }
 
-func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, error) {
+func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, component.ShutdownFunc, error) {
 	if _, ok := exporterCfg.(*exporterConfig); !ok {
-		return nil, fmt.Errorf("expected *exporterConfig, got %T", exporterCfg)
+		return nil, nil, fmt.Errorf("expected *exporterConfig, got %T", exporterCfg)
 	}
 
 	client, err := m.newClientFromEnvironment()
 	if err != nil {
-		return nil, fmt.Errorf("create ECS metadata client: %w", err)
+		return nil, nil, fmt.Errorf("create ECS metadata client: %w", err)
 	}
 	runtime := m.newRuntime(client, m.loggerFromSettings(set))
 
@@ -59,28 +56,13 @@ func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exp
 	for _, collector := range runtime.Collectors() {
 		if err := registry.Register(collector); err != nil {
 			if shutdownErr := runtime.Shutdown(ctx); shutdownErr != nil {
-				return nil, fmt.Errorf("register collector: %w; shutdown ECS runtime: %w", err, shutdownErr)
+				return nil, nil, fmt.Errorf("register collector: %w; shutdown ECS runtime: %w", err, shutdownErr)
 			}
-			return nil, fmt.Errorf("register collector: %w", err)
+			return nil, nil, fmt.Errorf("register collector: %w", err)
 		}
 	}
 
-	m.mu.Lock()
-	m.runtime = runtime
-	m.mu.Unlock()
-	return registry, nil
-}
-
-func (m *lifecycleManager) Shutdown(ctx context.Context) error {
-	m.mu.Lock()
-	runtime := m.runtime
-	m.runtime = nil
-	m.mu.Unlock()
-
-	if runtime == nil {
-		return nil
-	}
-	return runtime.Shutdown(ctx)
+	return registry, runtime.Shutdown, nil
 }
 
 func collectorSlogLogger(set receiver.Settings) *slog.Logger {

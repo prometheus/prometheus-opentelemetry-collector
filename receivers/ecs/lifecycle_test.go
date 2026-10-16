@@ -36,7 +36,7 @@ func TestLifecycleManagerRejectsWrongConfig(t *testing.T) {
 	t.Parallel()
 
 	manager := newLifecycleManager()
-	if _, err := manager.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), struct{}{}); err == nil {
+	if _, _, err := manager.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), struct{}{}); err == nil {
 		t.Fatal("Start() accepted the wrong config type")
 	}
 }
@@ -45,22 +45,58 @@ func TestLifecycleManagerReportsMissingMetadataEndpoint(t *testing.T) {
 	t.Setenv("ECS_CONTAINER_METADATA_URI_V4", "")
 
 	manager := newLifecycleManager()
-	if _, err := manager.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), &exporterConfig{}); err == nil {
+	if _, _, err := manager.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), &exporterConfig{}); err == nil {
 		t.Fatal("Start() succeeded without ECS_CONTAINER_METADATA_URI_V4")
 	}
 }
 
-func TestLifecycleManagerShutsDownRuntime(t *testing.T) {
+func TestLifecycleManagerReturnsIndependentRuntimeShutdowns(t *testing.T) {
 	t.Parallel()
 
-	fake := &fakeRuntime{}
+	first := &fakeRuntime{}
+	second := &fakeRuntime{}
+	runtimes := []runtime{first, second}
 	manager := newLifecycleManager()
-	manager.runtime = fake
-	if err := manager.Shutdown(context.Background()); err != nil {
-		t.Fatalf("Shutdown() error = %v", err)
+	manager.newClientFromEnvironment = func() (*ecsmetadata.Client, error) {
+		return ecsmetadata.NewClient("http://example.invalid"), nil
 	}
-	if !fake.shutdown {
-		t.Fatal("Shutdown() did not shut down the runtime")
+	manager.newRuntime = func(*ecsmetadata.Client, *slog.Logger) runtime {
+		runtime := runtimes[0]
+		runtimes = runtimes[1:]
+		return runtime
+	}
+	_, shutdownFirst, err := manager.Start(
+		context.Background(),
+		receivertest.NewNopSettings(metadata.Type),
+		&exporterConfig{},
+	)
+	if err != nil {
+		t.Fatalf("first Start() error = %v", err)
+	}
+	_, shutdownSecond, err := manager.Start(
+		context.Background(),
+		receivertest.NewNopSettings(metadata.Type),
+		&exporterConfig{},
+	)
+	if err != nil {
+		t.Fatalf("second Start() error = %v", err)
+	}
+
+	if err := shutdownFirst(context.Background()); err != nil {
+		t.Fatalf("first shutdown() error = %v", err)
+	}
+	if !first.shutdown {
+		t.Fatal("first shutdown function did not shut down the first runtime")
+	}
+	if second.shutdown {
+		t.Fatal("first shutdown function shut down the second runtime")
+	}
+
+	if err := shutdownSecond(context.Background()); err != nil {
+		t.Fatalf("second shutdown() error = %v", err)
+	}
+	if !second.shutdown {
+		t.Fatal("second shutdown function did not shut down the second runtime")
 	}
 }
 
@@ -87,7 +123,7 @@ func TestLifecycleManagerEndToEnd(t *testing.T) {
 	t.Setenv("ECS_CONTAINER_METADATA_URI_V4", server.URL)
 
 	manager := newLifecycleManager()
-	registry, err := manager.Start(
+	registry, shutdown, err := manager.Start(
 		context.Background(),
 		receivertest.NewNopSettings(metadata.Type),
 		&exporterConfig{},
@@ -96,8 +132,8 @@ func TestLifecycleManagerEndToEnd(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 	t.Cleanup(func() {
-		if err := manager.Shutdown(context.Background()); err != nil {
-			t.Errorf("Shutdown() error = %v", err)
+		if err := shutdown(context.Background()); err != nil {
+			t.Errorf("shutdown() error = %v", err)
 		}
 	})
 
@@ -127,11 +163,14 @@ func TestLifecycleManagerStartsRuntime(t *testing.T) {
 		return fake
 	}
 
-	registry, err := manager.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), &exporterConfig{})
+	registry, shutdown, err := manager.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), &exporterConfig{})
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
 	if _, err := registry.Gather(); err != nil {
 		t.Fatalf("registry.Gather() error = %v", err)
+	}
+	if err := shutdown(context.Background()); err != nil {
+		t.Fatalf("shutdown() error = %v", err)
 	}
 }
