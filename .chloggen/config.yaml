@@ -12,3 +12,4 @@ components:
   - receiver/stackdriver
   - receiver/yace
   - receiver/ecs
+  - receiver/mysqld
