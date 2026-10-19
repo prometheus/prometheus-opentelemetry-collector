@@ -6,7 +6,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/prometheus-community/postgres_exporter v0.20.2-0.20260818133720-5a2bd34f79f6
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261019132938-8caceda43c1d
+	github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261019174740-d68cc8360c71
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.68.0
 	go.opentelemetry.io/collector/component/componenttest v0.162.0
@@ -58,7 +58,7 @@ require (
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/grpc v1.83.2 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
