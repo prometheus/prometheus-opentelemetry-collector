@@ -41,6 +41,7 @@ receivers:
 | `cloudwatch_concurrency` | CloudWatch API concurrency (`single_limit`, `per_api_limit_enabled`, `list_metrics`, `get_metric_data`, `get_metric_statistics`). |
 | `feature_flags` | YACE feature flags (e.g. `aws-sdk-v2`). |
 | `fips_enabled` | Use FIPS AWS endpoints. |
+| `disable_account_alias_lookup` | Skip the IAM `ListAccountAliases` call and leave the `account_alias` label empty (default `false`). |
 
 `scrape_config_file` takes a standard YACE config — the same format the
 standalone exporter's `--config.file` accepts. See YACE's
