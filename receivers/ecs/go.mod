@@ -3,8 +3,8 @@ module github.com/prometheus/prometheus-opentelemetry-collector/receivers/ecs
 go 1.26.0
 
 require (
-	github.com/prometheus-community/ecs_exporter v0.6.0
-	github.com/prometheus/client_golang v1.24.1
+	github.com/prometheus-community/ecs_exporter v0.7.0
+	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261019174740-d68cc8360c71
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.68.0
