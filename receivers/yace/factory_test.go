@@ -58,13 +58,14 @@ func TestFactory_DefaultConfigDerivesExporterDefaults(t *testing.T) {
 	cfg := NewFactory().CreateDefaultConfig().(*prombridge.ReceiverConfig)
 
 	want := map[string]interface{}{
-		"scrape_config_file":      config.DefaultScrapeConfigFile,
-		"metrics_per_query":       config.DefaultMetricsPerQuery,
-		"labels_snake_case":       config.DefaultLabelsSnakeCase,
-		"tagging_api_concurrency": config.DefaultTaggingAPIConcurrency,
-		"feature_flags":           []string{},
-		"fips_enabled":            false,
-		"cloudwatch_concurrency":  config.DefaultCloudwatchConcurrency,
+		"scrape_config_file":           config.DefaultScrapeConfigFile,
+		"metrics_per_query":            config.DefaultMetricsPerQuery,
+		"labels_snake_case":            config.DefaultLabelsSnakeCase,
+		"tagging_api_concurrency":      config.DefaultTaggingAPIConcurrency,
+		"feature_flags":                []string{},
+		"fips_enabled":                 false,
+		"disable_account_alias_lookup": false,
+		"cloudwatch_concurrency":       config.DefaultCloudwatchConcurrency,
 	}
 
 	if !reflect.DeepEqual(cfg.ExporterConfig, want) {
@@ -78,12 +79,13 @@ func TestFactory_CreateMetrics_DecodesUntaggedConfig(t *testing.T) {
 	t.Parallel()
 
 	err := createMetrics(t, map[string]interface{}{
-		"scrape_config_file":      "config.yml",
-		"metrics_per_query":       250,
-		"labels_snake_case":       true,
-		"tagging_api_concurrency": 3,
-		"feature_flags":           []string{"aws-sdk-v2"},
-		"fips_enabled":            true,
+		"scrape_config_file":           "config.yml",
+		"metrics_per_query":            250,
+		"labels_snake_case":            true,
+		"tagging_api_concurrency":      3,
+		"feature_flags":                []string{"aws-sdk-v2"},
+		"fips_enabled":                 true,
+		"disable_account_alias_lookup": true,
 		"cloudwatch_concurrency": map[string]interface{}{
 			"single_limit":          7,
 			"per_api_limit_enabled": false,

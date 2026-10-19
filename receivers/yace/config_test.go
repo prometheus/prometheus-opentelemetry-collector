@@ -27,13 +27,14 @@ func TestConfigStructShape(t *testing.T) {
 	t.Parallel()
 
 	want := map[string]string{
-		"ScrapeConfigFile":      "string",
-		"MetricsPerQuery":       "int",
-		"LabelsSnakeCase":       "bool",
-		"TaggingAPIConcurrency": "int",
-		"FeatureFlags":          "[]string",
-		"FIPSEnabled":           "bool",
-		"CloudwatchConcurrency": "config.CloudWatchConcurrencyConfig",
+		"ScrapeConfigFile":          "string",
+		"MetricsPerQuery":           "int",
+		"LabelsSnakeCase":           "bool",
+		"TaggingAPIConcurrency":     "int",
+		"FeatureFlags":              "[]string",
+		"FIPSEnabled":               "bool",
+		"DisableAccountAliasLookup": "bool",
+		"CloudwatchConcurrency":     "config.CloudWatchConcurrencyConfig",
 	}
 
 	got := map[string]string{}
