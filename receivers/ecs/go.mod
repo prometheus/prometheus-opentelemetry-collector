@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/prometheus-community/ecs_exporter v0.6.0
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261016174104-7d9dc1fa0679
+	github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261019132938-8caceda43c1d
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.68.0
 	go.opentelemetry.io/collector/component/componenttest v0.162.0

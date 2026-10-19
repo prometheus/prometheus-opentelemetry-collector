@@ -61,8 +61,8 @@ github.com/prometheus/client_model v0.6.3 h1:O0jaTVAYNxTHYInEPFJt5I3+sN8zqBtVMPT
 github.com/prometheus/client_model v0.6.3/go.mod h1:gpN5P9S7Rr6Yr92PiQ+Ixvhf6JZEkF1dnxsYL2aPBEM=
 github.com/prometheus/common v0.72.0 h1:tAYsE+sPJxIncDAobm4H5aQjmox9ZxEIIqPbiffa8G4=
 github.com/prometheus/common v0.72.0/go.mod h1:77NWqAQ2tXT7BIK40qjJdw5Acrsrg1TlHAnsQi3i6mk=
-github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261016174104-7d9dc1fa0679 h1:xZ4yW2tPQzVNr/9Yccef5lNSBFN71OXNyvUMUB6fwmg=
-github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261016174104-7d9dc1fa0679/go.mod h1:pCXtuOjp5UOFmYfpoNA8CEMvbiKP2UTzvM/WcTa/iZA=
+github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261019132938-8caceda43c1d h1:Jxc4PEGQRr48JVtI+6SAPeGYhNA5UaXXSgN229bqods=
+github.com/prometheus/opentelemetry-collector-bridge v0.1.1-0.20261019132938-8caceda43c1d/go.mod h1:pCXtuOjp5UOFmYfpoNA8CEMvbiKP2UTzvM/WcTa/iZA=
 github.com/prometheus/procfs v0.22.0 h1:6q9+/JL9IKAPbCmBrv9n5O5Ty3NKnciV5X7YGw0oics=
 github.com/prometheus/procfs v0.22.0/go.mod h1:CvmFr/GVhIjIvWJZW3tgkODBQMRIf0EyWMQLHCHab58=
 github.com/quic-go/go-ossfuzz-seeds v0.1.0 h1:APacT+iIaNF6fd8AGEiN3bT/Jtkd2jz4v4TzM7MFjy0=
