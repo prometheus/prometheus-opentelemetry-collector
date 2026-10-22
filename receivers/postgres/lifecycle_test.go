@@ -45,7 +45,7 @@ func TestLifecycleManager_Start_RejectsWrongConfigType(t *testing.T) {
 
 	mgr := newLifecycleManager()
 
-	_, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), wrongConfig{})
+	_, _, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), wrongConfig{})
 	if err == nil {
 		t.Fatal("Start() expected error for wrong config type, got nil")
 	}
@@ -66,7 +66,7 @@ func TestLifecycleManager_Start_ValidatesConfig(t *testing.T) {
 		return nil, nil
 	}
 
-	_, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), cfg)
+	_, _, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), cfg)
 	if err == nil {
 		t.Fatal("Start() expected validation error, got nil")
 	}
@@ -96,7 +96,7 @@ func TestLifecycleManager_Start_RegisterCollectors(t *testing.T) {
 		return fake, nil
 	}
 
-	registry, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), cfg)
+	registry, shutdown, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), cfg)
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
@@ -106,6 +106,9 @@ func TestLifecycleManager_Start_RegisterCollectors(t *testing.T) {
 
 	if _, err := registry.Gather(); err != nil {
 		t.Fatalf("registry.Gather() error = %v", err)
+	}
+	if err := shutdown(context.Background()); err != nil {
+		t.Fatalf("shutdown() error = %v", err)
 	}
 }
 
@@ -124,7 +127,7 @@ func TestLifecycleManager_Start_ClosesRuntimeOnRegisterError(t *testing.T) {
 		return fake, nil
 	}
 
-	_, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), cfg)
+	_, _, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), cfg)
 	if err == nil {
 		t.Fatal("Start() expected register error, got nil")
 	}
@@ -133,26 +136,43 @@ func TestLifecycleManager_Start_ClosesRuntimeOnRegisterError(t *testing.T) {
 	}
 }
 
-func TestLifecycleManager_ShutdownClosesRuntime(t *testing.T) {
+func TestLifecycleManager_StartReturnsIndependentRuntimeShutdowns(t *testing.T) {
 	t.Parallel()
 
-	runtime := &fakeRuntime{}
+	defaults := exporterConfig(config.NewConfigWithDefaults())
+	cfg := &defaults
+	first := &fakeRuntime{}
+	second := &fakeRuntime{}
+	runtimes := []runtime{first, second}
 	mgr := newLifecycleManager()
-	mgr.runtime = runtime
-
-	if err := mgr.Shutdown(context.Background()); err != nil {
-		t.Fatalf("Shutdown() error = %v", err)
+	mgr.newRuntime = func(config.ValidatedConfig, *slog.Logger) (runtime, error) {
+		runtime := runtimes[0]
+		runtimes = runtimes[1:]
+		return runtime, nil
 	}
-	if !runtime.closed {
-		t.Fatal("Shutdown() did not close runtime")
+	_, shutdownFirst, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), cfg)
+	if err != nil {
+		t.Fatalf("first Start() error = %v", err)
 	}
-}
+	_, shutdownSecond, err := mgr.Start(context.Background(), receivertest.NewNopSettings(receiverType), cfg)
+	if err != nil {
+		t.Fatalf("second Start() error = %v", err)
+	}
 
-func TestLifecycleManager_ShutdownWithoutRuntime(t *testing.T) {
-	t.Parallel()
+	if err := shutdownFirst(context.Background()); err != nil {
+		t.Fatalf("first shutdown() error = %v", err)
+	}
+	if !first.closed {
+		t.Fatal("first shutdown function did not close the first runtime")
+	}
+	if second.closed {
+		t.Fatal("first shutdown function closed the second runtime")
+	}
 
-	mgr := newLifecycleManager()
-	if err := mgr.Shutdown(context.Background()); err != nil {
-		t.Fatalf("Shutdown() error = %v", err)
+	if err := shutdownSecond(context.Background()); err != nil {
+		t.Fatalf("second shutdown() error = %v", err)
+	}
+	if !second.closed {
+		t.Fatal("second shutdown function did not close the second runtime")
 	}
 }

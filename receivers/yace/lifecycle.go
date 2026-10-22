@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap/exp/zapslog"
 )
@@ -33,24 +34,23 @@ var _ prombridge.ExporterLifecycleManager = (*lifecycleManager)(nil)
 
 type lifecycleManager struct {
 	loggerFromSettings func(set receiver.Settings) *slog.Logger
-	cancelScrapes      context.CancelFunc
 }
 
 func newLifecycleManager() *lifecycleManager {
 	return &lifecycleManager{loggerFromSettings: collectorSlogLogger}
 }
 
-func (m *lifecycleManager) Start(_ context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, error) {
+func (m *lifecycleManager) Start(_ context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, component.ShutdownFunc, error) {
 	cfg, ok := exporterCfg.(*config.Config)
 	if !ok {
-		return nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
+		return nil, nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
 	}
 
 	logger := m.loggerFromSettings(set)
 	scrapeConf := config.ScrapeConf{}
 	jobsCfg, err := scrapeConf.Load(cfg.ScrapeConfigFile, logger)
 	if err != nil {
-		return nil, fmt.Errorf("load YACE scrape config: %w", err)
+		return nil, nil, fmt.Errorf("load YACE scrape config: %w", err)
 	}
 
 	registry := prometheus.NewRegistry()
@@ -58,33 +58,27 @@ func (m *lifecycleManager) Start(_ context.Context, set receiver.Settings, expor
 
 	factory, err := clients.NewFactory(logger, scrapeMetrics, jobsCfg, cfg.FIPSEnabled)
 	if err != nil {
-		return nil, fmt.Errorf("create YACE client factory: %w", err)
+		return nil, nil, fmt.Errorf("create YACE client factory: %w", err)
 	}
 
 	scraper, err := metrics.NewScraper(logger, scrapeMetrics, *cfg, jobsCfg, factory)
 	if err != nil {
-		return nil, fmt.Errorf("create YACE scraper: %w", err)
+		return nil, nil, fmt.Errorf("create YACE scraper: %w", err)
 	}
 
 	// The Start context is only for startup work; scrapes happen later from
 	// prometheus.Collector. Keep a component-lifetime context so Shutdown can
 	// cancel in-flight CloudWatch calls.
 	scrapeCtx, cancel := context.WithCancel(context.Background())
-	m.cancelScrapes = cancel
 	if err := registry.Register(newScrapeCollector(scrapeCtx, logger, scraper)); err != nil {
 		cancel()
-		return nil, fmt.Errorf("register YACE scrape collector: %w", err)
+		return nil, nil, fmt.Errorf("register YACE scrape collector: %w", err)
 	}
 
-	return registry, nil
-}
-
-func (m *lifecycleManager) Shutdown(context.Context) error {
-	if m.cancelScrapes != nil {
-		m.cancelScrapes()
-		m.cancelScrapes = nil
-	}
-	return nil
+	return registry, func(context.Context) error {
+		cancel()
+		return nil
+	}, nil
 }
 
 func collectorSlogLogger(set receiver.Settings) *slog.Logger {
