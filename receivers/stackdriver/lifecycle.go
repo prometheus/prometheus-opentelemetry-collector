@@ -45,8 +45,20 @@ func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exp
 		return nil, nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
 	}
 
+	// The Google client's token source can retain this context after startup.
+	// Honor startup cancellation while initializing, then let receiver shutdown
+	// own cancellation independently of the Collector's Start context.
+	runtimeCtx, cancel := context.WithCancel(context.Background())
+	stopStartupCancellation := context.AfterFunc(ctx, cancel)
+	defer stopStartupCancellation()
+	started := false
+	defer func() {
+		if !started {
+			cancel()
+		}
+	}()
 	logger := m.loggerFromSettings(set)
-	runtime, err := collectors.NewRuntime(ctx, logger, cfg, delta.NewInMemoryCounterStore, delta.NewInMemoryHistogramStore)
+	runtime, err := collectors.NewRuntime(runtimeCtx, logger, cfg, delta.NewInMemoryCounterStore, delta.NewInMemoryHistogramStore)
 	if err != nil {
 		return nil, nil, fmt.Errorf("start stackdriver runtime: %w", err)
 	}
@@ -62,7 +74,15 @@ func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exp
 			return nil, nil, fmt.Errorf("register collector: %w", err)
 		}
 	}
-	return registry, nil, nil
+	stopStartupCancellation()
+	if err := ctx.Err(); err != nil {
+		return nil, nil, fmt.Errorf("start stackdriver runtime: %w", err)
+	}
+	started = true
+	return registry, func(context.Context) error {
+		cancel()
+		return nil
+	}, nil
 }
 
 func collectorSlogLogger(set receiver.Settings) *slog.Logger {
