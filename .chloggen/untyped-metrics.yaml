@@ -1,0 +1,6 @@
+change_type: bug_fix
+component: all
+note: "Convert untyped Prometheus metrics to OTLP gauges instead of dropping them as unsupported."
+issues: [74]
+subtext: "Provided by the OpenTelemetry Prometheus bridge dependency update to v0.72.0."
+change_logs: [user]
