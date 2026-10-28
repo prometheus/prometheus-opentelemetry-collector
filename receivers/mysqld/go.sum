@@ -75,8 +75,8 @@ github.com/prometheus/client_model v0.6.3 h1:O0jaTVAYNxTHYInEPFJt5I3+sN8zqBtVMPT
 github.com/prometheus/client_model v0.6.3/go.mod h1:gpN5P9S7Rr6Yr92PiQ+Ixvhf6JZEkF1dnxsYL2aPBEM=
 github.com/prometheus/common v0.72.1 h1:ZAiQed/nk8IIcsdzb2TlJu23NEUDyDLQ9TXTN2WRK6Y=
 github.com/prometheus/common v0.72.1/go.mod h1:1IoBY4IRaJnhs2ESjNzjilP1cJ/P8pimGoomq7zRXrA=
-github.com/prometheus/mysqld_exporter v0.20.1-0.20261016173344-adeedc041cf9 h1:NtUIwD2u2U+Ka4wqhVH8i5jgd6B3IfcjBk62xKWAY0A=
-github.com/prometheus/mysqld_exporter v0.20.1-0.20261016173344-adeedc041cf9/go.mod h1:4SvahV7U8NQGiIrHcFqcncN0PCPocLc6pSMLQbxpEhA=
+github.com/prometheus/mysqld_exporter v0.21.0 h1:ZCpQHJqLiwqYxKn2JmbMDsoGNEAB0YKevy6jcU+tuII=
+github.com/prometheus/mysqld_exporter v0.21.0/go.mod h1:4SvahV7U8NQGiIrHcFqcncN0PCPocLc6pSMLQbxpEhA=
 github.com/prometheus/opentelemetry-collector-bridge v0.2.0 h1:dj3hKumeU/5xKPA8X1WxCmltJ/VFVE284jh7F0+TMeY=
 github.com/prometheus/opentelemetry-collector-bridge v0.2.0/go.mod h1:gfwjgoHfrrbRAlBMqwaOjtciZfdeoJda96TFGLlfep0=
 github.com/prometheus/otlptranslator v1.0.0 h1:s0LJW/iN9dkIH+EnhiD3BlkkP5QVIUVEoIwkU+A6qos=

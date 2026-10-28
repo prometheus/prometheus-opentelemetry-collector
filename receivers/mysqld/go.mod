@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/prometheus/client_golang v1.25.0
-	github.com/prometheus/mysqld_exporter v0.20.1-0.20261016173344-adeedc041cf9
+	github.com/prometheus/mysqld_exporter v0.21.0
 	github.com/prometheus/opentelemetry-collector-bridge v0.2.0
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.69.0
