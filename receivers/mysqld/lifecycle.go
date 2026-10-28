@@ -23,6 +23,7 @@ import (
 	mysqldcollector "github.com/prometheus/mysqld_exporter/collector"
 	"github.com/prometheus/mysqld_exporter/config"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap/exp/zapslog"
 )
@@ -31,44 +32,34 @@ var _ prombridge.ExporterLifecycleManager = (*lifecycleManager)(nil)
 
 type lifecycleManager struct {
 	loggerFromSettings func(set receiver.Settings) *slog.Logger
-	runtime            *mysqldcollector.Runtime
 }
 
 func newLifecycleManager() *lifecycleManager {
 	return &lifecycleManager{loggerFromSettings: collectorSlogLogger}
 }
 
-func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, error) {
+func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, component.ShutdownFunc, error) {
 	cfg, ok := exporterCfg.(*config.Config)
 	if !ok {
-		return nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
+		return nil, nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
 	}
 
 	runtime, err := mysqldcollector.NewRuntime(*cfg, m.loggerFromSettings(set))
 	if err != nil {
-		return nil, fmt.Errorf("start mysqld runtime: %w", err)
+		return nil, nil, fmt.Errorf("start mysqld runtime: %w", err)
 	}
 
 	registry := prometheus.NewRegistry()
 	for _, c := range runtime.Collectors() {
 		if err := registry.Register(c); err != nil {
-			_ = runtime.Shutdown(ctx)
-			return nil, fmt.Errorf("register collector: %w", err)
+			if shutdownErr := runtime.Shutdown(ctx); shutdownErr != nil {
+				return nil, nil, fmt.Errorf("register collector: %w; shutdown mysqld runtime: %w", err, shutdownErr)
+			}
+			return nil, nil, fmt.Errorf("register collector: %w", err)
 		}
 	}
 
-	m.runtime = runtime
-	return registry, nil
-}
-
-func (m *lifecycleManager) Shutdown(ctx context.Context) error {
-	if m.runtime == nil {
-		return nil
-	}
-
-	err := m.runtime.Shutdown(ctx)
-	m.runtime = nil
-	return err
+	return registry, runtime.Shutdown, nil
 }
 
 func collectorSlogLogger(set receiver.Settings) *slog.Logger {

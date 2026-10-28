@@ -31,39 +31,25 @@ func TestLifecycleManager_Start_RejectsWrongConfigType(t *testing.T) {
 
 	mgr := newLifecycleManager()
 
-	_, err := mgr.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), wrongConfig{})
+	_, _, err := mgr.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), wrongConfig{})
 	if err == nil {
 		t.Fatal("Start() expected error for wrong config type, got nil")
 	}
 }
 
-func TestLifecycleManager_Shutdown(t *testing.T) {
+func TestLifecycleManager_Start_ReturnsShutdown(t *testing.T) {
 	t.Parallel()
-
-	mgr := newLifecycleManager()
-	if err := mgr.Shutdown(context.Background()); err != nil {
-		t.Fatalf("Shutdown() error = %v", err)
-	}
-}
-
-func TestLifecycleManager_ShutdownRuntime(t *testing.T) {
-	t.Parallel()
-
 	mgr := newLifecycleManager()
 	cfg := config.NewConfigWithDefaults()
 	cfg.DataSourceName = "exporter:secret@(127.0.0.1:3306)/"
-
-	if _, err := mgr.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), &cfg); err != nil {
-		t.Fatalf("Start() error = %v", err)
+	registry, shutdown, err := mgr.Start(context.Background(), receivertest.NewNopSettings(metadata.Type), &cfg)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if mgr.runtime == nil {
-		t.Fatal("Start() did not retain the mysqld runtime")
+	if registry == nil || shutdown == nil {
+		t.Fatal("Start() must return a registry and runtime shutdown")
 	}
-
-	if err := mgr.Shutdown(context.Background()); err != nil {
-		t.Fatalf("Shutdown() error = %v", err)
-	}
-	if mgr.runtime != nil {
-		t.Fatal("Shutdown() did not release the mysqld runtime")
+	if err := shutdown(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 }
