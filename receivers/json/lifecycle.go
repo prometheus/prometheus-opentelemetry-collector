@@ -5,12 +5,11 @@ package json
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 
-	jsonexporter "github.com/prometheus-community/json_exporter/exporter"
+	"github.com/prometheus-community/json_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
 	"go.opentelemetry.io/collector/component"
@@ -34,33 +33,18 @@ func (*lifecycleManager) Start(_ context.Context, set receiver.Settings, exporte
 	if set.Logger != nil {
 		logger = slog.New(zapslog.NewHandler(set.Logger.Core()))
 	}
+	// The exporter owns all target collectors and their lifecycle. This adapter
+	// only registers them with the bridge and passes through instance shutdown.
+	runtime, err := exporter.NewRuntime(cfg.Config, logger)
+	if err != nil {
+		return nil, nil, err
+	}
 	registry := prometheus.NewRegistry()
-	runtimes := make([]*jsonexporter.Runtime, 0, len(cfg.Targets))
-	shutdown := func(ctx context.Context) error {
-		var err error
-		for _, runtime := range runtimes {
-			err = errors.Join(err, runtime.Shutdown(ctx))
-		}
-		return err
-	}
-	for _, target := range cfg.Targets {
-		runtime, err := jsonexporter.NewRuntime(cfg.runtimeConfig(target), logger.With("target_name", target.Name, "module", target.Module))
-		if err != nil {
-			_ = shutdown(context.Background())
-			return nil, nil, fmt.Errorf("target %q: %w", target.Name, err)
-		}
-		runtimes = append(runtimes, runtime)
-		labels := prometheus.Labels{"target": target.Address, "target_name": target.Name, "module": target.Module}
-		for k, v := range target.Labels {
-			labels[k] = v
-		}
-		registerer := prometheus.WrapRegistererWith(labels, registry)
-		for _, collector := range runtime.Collectors() {
-			if err := registerer.Register(collector); err != nil {
-				_ = shutdown(context.Background())
-				return nil, nil, fmt.Errorf("register target %q: %w", target.Name, err)
-			}
+	for _, collector := range runtime.Collectors() {
+		if err := registry.Register(collector); err != nil {
+			_ = runtime.Shutdown(context.Background())
+			return nil, nil, fmt.Errorf("register JSON collector: %w", err)
 		}
 	}
-	return registry, shutdown, nil
+	return registry, runtime.Shutdown, nil
 }

@@ -50,4 +50,4 @@ replaces:
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace => ../receivers/yace
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/ecs => ../receivers/ecs
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/json => ../receivers/json
-  - github.com/prometheus-community/json_exporter => github.com/ArthurSens/json_exporter v0.8.1-0.20261029200549-e22af8738cdf
+  - github.com/prometheus-community/json_exporter => github.com/ArthurSens/json_exporter v0.8.1-0.20261029201934-95aa2a5c9fb8

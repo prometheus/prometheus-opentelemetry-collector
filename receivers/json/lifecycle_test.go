@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus-community/json_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	prombridge "github.com/prometheus/opentelemetry-collector-bridge"
 	"github.com/prometheus/prometheus-opentelemetry-collector/receivers/json/internal/metadata"
@@ -21,21 +22,27 @@ import (
 )
 
 func TestReceiverEmitsOTelMetrics(t *testing.T) {
-	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `{"value":42}`) }))
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/other" {
+			_, _ = io.WriteString(w, `{"value":7}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"value":42}`)
+	}))
 	defer target.Close()
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig().(*prombridge.ReceiverConfig)
 	cfg.ScrapeInterval = 10 * time.Millisecond
 	cfg.ExporterConfig = rawConfig(target.URL)
 	cfg.ExporterConfig["targets"] = append(cfg.ExporterConfig["targets"].([]interface{}), map[string]interface{}{
-		"name": "unavailable", "address": target.URL + "/fail",
+		"name": "other", "address": target.URL + "/other",
 	})
 	sink := new(consumertest.MetricsSink)
 	receiver, err := factory.CreateMetrics(context.Background(), receivertest.NewNopSettings(metadata.Type), cfg, sink)
 	require.NoError(t, err)
 	require.NoError(t, receiver.Start(context.Background(), componenttest.NewNopHost()))
 	defer func() { require.NoError(t, receiver.Shutdown(context.Background())) }()
-	require.Eventually(t, func() bool { return sink.DataPointCount() > 0 }, 5*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return sink.DataPointCount() >= 2 }, 5*time.Second, 10*time.Millisecond)
 	found := false
 	for _, batch := range sink.AllMetrics() {
 		for _, rm := range batch.ResourceMetrics().All() {
@@ -45,11 +52,14 @@ func TestReceiverEmitsOTelMetrics(t *testing.T) {
 						continue
 					}
 					found = true
-					point := metric.Gauge().DataPoints().At(0)
-					require.Equal(t, float64(42), point.DoubleValue())
-					name, ok := point.Attributes().Get("target_name")
-					require.True(t, ok)
-					require.Equal(t, "api", name.Str())
+					require.Equal(t, 2, metric.Gauge().DataPoints().Len())
+					values := make(map[string]float64)
+					for _, point := range metric.Gauge().DataPoints().All() {
+						name, ok := point.Attributes().Get("target_name")
+						require.True(t, ok)
+						values[name.Str()] = point.DoubleValue()
+					}
+					require.Equal(t, map[string]float64{"api": 42, "other": 7}, values)
 				}
 			}
 		}
@@ -67,7 +77,7 @@ func TestLifecycleInstancesAndPartialFailure(t *testing.T) {
 	}))
 	defer target.Close()
 	cfg := decodeConfig(t, rawConfig(target.URL))
-	cfg.Targets = append(cfg.Targets, Target{Name: "unavailable", Address: target.URL + "/fail", Module: "default"})
+	cfg.Targets = append(cfg.Targets, config.Target{Name: "unavailable", Address: target.URL + "/fail", Module: "default"})
 	manager := &lifecycleManager{}
 	set := receivertest.NewNopSettings(metadata.Type)
 	// The startup context must not become the runtime's lifetime context.

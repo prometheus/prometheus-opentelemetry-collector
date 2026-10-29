@@ -7,9 +7,10 @@ a separate exporter process or `/probe` server.
 ## Configuration
 
 `scrape_interval` controls collection frequency (default `30s`). Under
-`exporter_config`, supply JSON exporter `modules` inline or use `config_file`
-to load an existing JSON exporter YAML file. The two options are mutually
-exclusive. Modules use the exporter's native field names and support JSONPath,
+`exporter_config`, use the JSON exporter's native configuration: `modules`,
+`targets`, and `timeout`. Alternatively, use `config_file` to load that same
+configuration from a JSON exporter YAML file. Inline `modules` and `config_file`
+are mutually exclusive. Modules use the exporter's native field names and support JSONPath,
 object metrics, labels, custom timestamps, missing keys, authentication, TLS,
 accepted status codes, and POST body templates.
 
@@ -34,9 +35,10 @@ receivers:
             environment: production
 ```
 
-To reuse a file, replace `modules` with `config_file: /etc/collector/json.yml`.
-The file is loaded during configuration; changes require restarting the
-receiver. Relative authentication/TLS file paths follow JSON exporter's existing
+To reuse a file, set `config_file: /etc/collector/json.yml`. The file can include
+modules, targets, and timeout. Explicit inline `targets` or `timeout` override
+those file settings, so modules-only exporter files can also be reused. The file
+is loaded during configuration; changes require restarting the receiver. Relative authentication/TLS file paths follow JSON exporter's existing
 behavior and are resolved from the Collector's working directory.
 
 Each target requires a unique `name` and an absolute HTTP(S) `address`. `module`
@@ -55,10 +57,14 @@ not collide with module metric labels.
 
 `timeout` defaults to `30s` and must be positive. It bounds each target's HTTP
 request, including response reading. Configured targets are collected by the
-registry concurrently. Each receiver owns its runtimes and cancellation;
-shutdown cancels that receiver's requests without stopping other instances.
-Fetch failures are reported as scrape errors, with successfully collected
-metrics retained by the bridge. JSONPath extraction follows the exporter's
+registry concurrently. Each receiver owns one exporter runtime containing all
+its target collectors. Shutdown cancels that runtime's requests without
+stopping other receiver instances.
+
+Fetch failures become Prometheus gather errors. The runtime returns successfully
+collected metric families alongside those errors, but bridge v0.2.0 currently
+drops the whole collection batch when a gather error occurs. Partial delivery
+through the bridge remains a limitation of this draft. JSONPath extraction follows the exporter's
 existing behavior: failures are logged and affected samples are omitted.
 
 ## Draft dependency

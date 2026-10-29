@@ -90,3 +90,34 @@ func TestConfigRejectsInvalidInputs(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigFileIncludesTargetsAndOverrides(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "json.yml")
+	require.NoError(t, os.WriteFile(file, []byte(`modules:
+  default:
+    metrics:
+      - name: api_value
+        path: '{.value}'
+        valuetype: gauge
+targets:
+  - name: from_file
+    address: https://example.com/file
+    parameters:
+      tenant: [example]
+timeout: 40s
+`), 0600))
+	cfg := decodeConfig(t, map[string]interface{}{"config_file": file})
+	require.Equal(t, 40*time.Second, cfg.Timeout)
+	require.Equal(t, "from_file", cfg.Targets[0].Name)
+	require.Equal(t, "default", cfg.Targets[0].Module)
+	require.Equal(t, "example", cfg.Targets[0].Parameters.Get("tenant"))
+	cfg = decodeConfig(t, map[string]interface{}{
+		"config_file": file,
+		"timeout":     "3s",
+		"targets":     []interface{}{map[string]interface{}{"name": "override", "address": "https://example.com/override"}},
+	})
+	require.Equal(t, 3*time.Second, cfg.Timeout)
+	require.Len(t, cfg.Targets, 1)
+	require.Equal(t, "override", cfg.Targets[0].Name)
+	require.Contains(t, cfg.Modules, "default")
+}

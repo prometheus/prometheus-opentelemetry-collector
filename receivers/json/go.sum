@@ -1,7 +1,7 @@
 dario.cat/mergo v1.0.1 h1:Ra4+bf83h2ztPIQYNP99R6m+Y7KfnARDfID+a+vLl4s=
 dario.cat/mergo v1.0.1/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
-github.com/ArthurSens/json_exporter v0.8.1-0.20261029200549-e22af8738cdf h1:vTsibeW7YKoWhbA/vn9jTHF0tb1Gm/xMSOOEKM2bKEc=
-github.com/ArthurSens/json_exporter v0.8.1-0.20261029200549-e22af8738cdf/go.mod h1:vs0OKOP+xUWlvzXiPTbTQyAaP0t1ayxSzNdDvh0vdXo=
+github.com/ArthurSens/json_exporter v0.8.1-0.20261029201934-95aa2a5c9fb8 h1:2FcUBQIqA3FKBej7F7fafzzN0lyH48sgt0UzLDeztDU=
+github.com/ArthurSens/json_exporter v0.8.1-0.20261029201934-95aa2a5c9fb8/go.mod h1:vs0OKOP+xUWlvzXiPTbTQyAaP0t1ayxSzNdDvh0vdXo=
 github.com/Masterminds/goutils v1.1.1 h1:5nUrii3FMTL5diU80unEVvNevw1nH4+ZV4DSLVJLSYI=
 github.com/Masterminds/goutils v1.1.1/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy863GQaJW2MFNU=
 github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1Xbatp0=

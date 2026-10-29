@@ -3,10 +3,8 @@ module github.com/prometheus/prometheus-opentelemetry-collector/receivers/json
 go 1.26.0
 
 require (
-	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/prometheus-community/json_exporter v0.8.0
 	github.com/prometheus/client_golang v1.25.0
-	github.com/prometheus/common v0.72.1
 	github.com/prometheus/opentelemetry-collector-bridge v0.2.0
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.69.0
@@ -28,6 +26,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
@@ -41,6 +40,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
+	github.com/prometheus/common v0.72.1 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
@@ -79,4 +79,4 @@ require (
 	k8s.io/client-go v0.37.1 // indirect
 )
 
-replace github.com/prometheus-community/json_exporter => github.com/ArthurSens/json_exporter v0.8.1-0.20261029200549-e22af8738cdf
+replace github.com/prometheus-community/json_exporter => github.com/ArthurSens/json_exporter v0.8.1-0.20261029201934-95aa2a5c9fb8
