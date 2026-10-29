@@ -79,4 +79,4 @@ require (
 	k8s.io/client-go v0.37.1 // indirect
 )
 
-replace github.com/prometheus-community/json_exporter => github.com/ArthurSens/json_exporter v0.8.1-0.20261029195033-69c6f7052da3
+replace github.com/prometheus-community/json_exporter => github.com/ArthurSens/json_exporter v0.8.1-0.20261029200549-e22af8738cdf
