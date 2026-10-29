@@ -1,6 +1,0 @@
-change_type: enhancement
-component: receiver/yace
-note: "Add the disable_account_alias_lookup option to skip IAM account alias lookups when collecting CloudWatch metrics."
-issues: [69]
-subtext: "The option defaults to false. When enabled, the account_alias label is left empty."
-change_logs: [user]
