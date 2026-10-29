@@ -1,0 +1,4 @@
+change_type: enhancement
+component: receiver/kepler
+note: Add a Kepler receiver for host and workload energy metrics.
+issues: [81]
