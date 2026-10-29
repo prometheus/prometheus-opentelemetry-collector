@@ -1,0 +1,21 @@
+display_name: JSON Exporter Receiver
+type: json_exporter
+github_project: prometheus/prometheus-opentelemetry-collector
+
+description: |
+  Receives metrics from JSON endpoints by embedding the Prometheus
+  [json_exporter](https://github.com/prometheus-community/json_exporter).
+
+status:
+  disable_codecov_badge: true
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [prometheus]
+  codeowners:
+    active: [ArthurSens]
+
+tests:
+  # Requires configured JSON modules and targets; lifecycle tests use local servers.
+  skip_lifecycle: true
+  skip_shutdown: true

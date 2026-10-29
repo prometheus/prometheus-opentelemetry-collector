@@ -1,0 +1,6 @@
+change_type: new_component
+component: receiver/json
+note: Add a JSON exporter receiver for collecting metrics directly from HTTP JSON APIs through embedded json_exporter collectors.
+issues: []
+subtext: Supports native JSON exporter modules, named targets, per-target timeouts, and receiver-owned shutdown.
+change_logs: []
