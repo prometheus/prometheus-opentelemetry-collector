@@ -1,0 +1,7 @@
+scrape_interval: 30s
+exporter_config:
+  data_source_name: "exporter@tcp(mydb.123456789012.us-east-1.rds.amazonaws.com:3306)/?tls=true"
+  auth_provider:
+    type: aws-iam
+    region: us-east-1
+    role_arn: arn:aws:iam::123456789012:role/Exporter

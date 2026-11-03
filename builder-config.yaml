@@ -42,6 +42,9 @@ telemetry:
   import: go.opentelemetry.io/collector/service/telemetry/otelconftelemetry
 
 replaces:
+  # Temporary pin to prometheus/mysqld_exporter#1107 until IAM auth is released.
+  # Receiver module replacements are not inherited by the generated distribution.
+  - github.com/prometheus/mysqld_exporter => github.com/macabu/mysqld_exporter v0.0.0-20261029100607-d60afd4fa6b3
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/postgres => ../receivers/postgres
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/blackbox => ../receivers/blackbox
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/mysqld => ../receivers/mysqld
