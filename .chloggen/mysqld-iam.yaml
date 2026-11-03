@@ -1,4 +1,4 @@
 change_type: enhancement
 component: receiver/mysqld
 note: Add AWS IAM authentication configuration for RDS and Aurora MySQL.
-issues: []
+issues: [85]
