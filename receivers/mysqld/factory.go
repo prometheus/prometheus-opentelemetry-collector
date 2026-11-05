@@ -25,6 +25,6 @@ func NewFactory() receiver.Factory {
 		metadata.Type,
 		newLifecycleManager(),
 		configUnmarshaler{},
-		prombridge.WithDecodeHooks(mapstructure.StringToTimeDurationHookFunc()),
+		prombridge.WithDecodeHooks(mapstructure.StringToTimeDurationHookFunc(), authProviderDecodeHook),
 	)
 }

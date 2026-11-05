@@ -28,6 +28,7 @@ func TestConfigStructShape(t *testing.T) {
 
 	want := map[string]string{
 		"DataSourceName":                 "string",
+		"AuthProvider":                   "auth.Provider",
 		"Collectors":                     "map[string]bool",
 		"EnableExporterLockWaitTimeout":  "bool",
 		"ExporterLockWaitTimeoutSeconds": "int",

@@ -59,6 +59,7 @@ func TestFactory_DefaultConfigDerivesExporterDefaults(t *testing.T) {
 
 	want := map[string]interface{}{
 		"data_source_name":                   "",
+		"auth_provider":                      nil,
 		"collectors":                         config.DefaultCollectorConfig(),
 		"enable_exporter_lock_wait_timeout":  config.DefaultEnableExporterLockTimeout,
 		"exporter_lock_wait_timeout_seconds": config.DefaultExporterLockWaitTimeoutSeconds,
