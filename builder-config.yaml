@@ -15,6 +15,7 @@ receivers:
   - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace v0.2.0
   - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/ecs v0.1.0
   - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/mysqld v0.0.0
+  - gomod: github.com/prometheus/prometheus-opentelemetry-collector/receivers/json v0.0.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.160.0
@@ -48,3 +49,5 @@ replaces:
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/stackdriver => ../receivers/stackdriver
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/yace => ../receivers/yace
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/ecs => ../receivers/ecs
+  - github.com/prometheus/prometheus-opentelemetry-collector/receivers/json => ../receivers/json
+  - github.com/prometheus-community/json_exporter => github.com/ArthurSens/json_exporter v0.8.1-0.20261029201934-95aa2a5c9fb8
