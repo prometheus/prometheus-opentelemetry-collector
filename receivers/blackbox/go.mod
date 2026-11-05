@@ -16,7 +16,7 @@ require (
 	go.opentelemetry.io/collector/receiver/receivertest v0.163.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap/exp v0.3.0
-	go.yaml.in/yaml/v3 v3.0.5
+	go.yaml.in/yaml/v3 v3.0.6
 	google.golang.org/protobuf v1.36.12
 )
 
