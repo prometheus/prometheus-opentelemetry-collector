@@ -1,0 +1,22 @@
+display_name: Kepler Exporter Receiver
+type: kepler_exporter
+github_project: prometheus/prometheus-opentelemetry-collector
+
+description: |
+  Receives energy and power metrics by embedding the
+  [Kepler](https://github.com/sustainable-computing-io/kepler) runtime.
+
+status:
+  disable_codecov_badge: true
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [prometheus]
+  codeowners:
+    active: [ArthurSens]
+
+tests:
+  # Real sensors are not available in ordinary CI. Fake-meter runtime and
+  # multi-instance lifecycle tests run in lifecycle_test.go on Linux.
+  skip_lifecycle: true
+  skip_shutdown: true

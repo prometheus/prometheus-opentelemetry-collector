@@ -13,3 +13,4 @@ components:
   - receiver/yace
   - receiver/ecs
   - receiver/mysqld
+  - receiver/kepler
