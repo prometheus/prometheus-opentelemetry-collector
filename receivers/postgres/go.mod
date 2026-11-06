@@ -4,8 +4,8 @@ go 1.26.0
 
 require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
-	github.com/prometheus-community/postgres_exporter v0.20.2-0.20260818133720-5a2bd34f79f6
-	github.com/prometheus/client_golang v1.24.1
+	github.com/prometheus-community/postgres_exporter v0.20.2-0.20261029122203-a39c0730413c
+	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/opentelemetry-collector-bridge v0.2.0
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.69.0
