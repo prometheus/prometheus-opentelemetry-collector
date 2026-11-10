@@ -1,0 +1,21 @@
+display_name: Node Exporter Receiver
+type: node_exporter
+github_project: prometheus/prometheus-opentelemetry-collector
+
+description: |
+  Receives host metrics by embedding the Prometheus
+  [node_exporter](https://github.com/prometheus/node_exporter)
+  directly in the OpenTelemetry Collector.
+
+status:
+  disable_codecov_badge: true
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [prometheus]
+  codeowners:
+    active: [ArthurSens]
+
+tests:
+  skip_lifecycle: true
+  skip_shutdown: true
