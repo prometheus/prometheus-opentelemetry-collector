@@ -36,7 +36,8 @@ func TestLinuxIndependentCollectorsAndPaths(t *testing.T) {
 		cfg.Path.SysFS = filepath.Join("testdata", "sys")
 		registry, shutdown, err := manager.Start(context.Background(), settings, &cfg)
 		require.NoError(t, err)
-		require.Nil(t, shutdown, "upstream currently has no shutdown API")
+		require.NotNil(t, shutdown)
+		t.Cleanup(func() { require.NoError(t, shutdown(context.Background())) })
 		registries[i] = registry
 	}
 	for i, test := range tests {

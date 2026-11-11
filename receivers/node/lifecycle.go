@@ -30,19 +30,32 @@ import (
 
 var _ prombridge.ExporterLifecycleManager = (*lifecycleManager)(nil)
 
-type lifecycleManager struct{}
-
-func newLifecycleManager() *lifecycleManager {
-	return &lifecycleManager{}
+type exporterRuntime interface {
+	Collectors() []prometheus.Collector
+	Shutdown(context.Context) error
 }
 
-func (m *lifecycleManager) Start(_ context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, component.ShutdownFunc, error) {
+type lifecycleManager struct {
+	newRuntime func(config.Config, *slog.Logger) (exporterRuntime, error)
+}
+
+func newLifecycleManager() *lifecycleManager {
+	return &lifecycleManager{
+		newRuntime: func(cfg config.Config, logger *slog.Logger) (exporterRuntime, error) {
+			return nodecollector.NewRuntime(cfg, logger)
+		},
+	}
+}
+
+func (m *lifecycleManager) Start(ctx context.Context, set receiver.Settings, exporterCfg any) (*prometheus.Registry, component.ShutdownFunc, error) {
 	cfg, ok := exporterCfg.(*config.Config)
 	if !ok || cfg == nil {
 		return nil, nil, fmt.Errorf("expected *config.Config, got %T", exporterCfg)
 	}
 
-	runtime, err := nodecollector.NewRuntime(*cfg, collectorSlogLogger(set))
+	// The startup context does not bound the receiver's lifetime. The bridge
+	// retains the shutdown function for this particular runtime instead.
+	runtime, err := m.newRuntime(*cfg, collectorSlogLogger(set))
 	if err != nil {
 		return nil, nil, fmt.Errorf("start node runtime: %w", err)
 	}
@@ -50,12 +63,14 @@ func (m *lifecycleManager) Start(_ context.Context, set receiver.Settings, expor
 	registry := prometheus.NewRegistry()
 	for _, c := range runtime.Collectors() {
 		if err := registry.Register(c); err != nil {
+			if shutdownErr := runtime.Shutdown(ctx); shutdownErr != nil {
+				return nil, nil, fmt.Errorf("register collector: %w; shutdown node runtime: %w", err, shutdownErr)
+			}
 			return nil, nil, fmt.Errorf("register collector: %w", err)
 		}
 	}
 
-	// Upstream Runtime has no shutdown API. The bridge stops its scrape loop.
-	return registry, nil, nil
+	return registry, runtime.Shutdown, nil
 }
 
 func collectorSlogLogger(set receiver.Settings) *slog.Logger {

@@ -20,7 +20,7 @@ directly in the OpenTelemetry Collector.
 
 This draft embeds the unreleased runtime from
 [prometheus/node_exporter#3661](https://github.com/prometheus/node_exporter/pull/3661),
-pinned to commit `1b55828f08b340dea149915f14e4cfa67bfefce2` through a temporary
+pinned to commit `ab590e822c8333a58d2b3ac58a5e27b4f0d7ebdc` through a temporary
 module replacement. Replace that pin with an upstream release before merging.
 The distribution manifest repeats the replacement because Go does not propagate
 replacements from dependency modules.
@@ -86,18 +86,23 @@ labels, including `node_scrape_collector_success`.
 
 ## Draft limitations
 
-Upstream Runtime has no shutdown API. Receiver shutdown stops the bridge's
-scrape loop, but cannot release persistent upstream resources or cancel a
-blocked collection. In particular, repeated creation of ethtool runtimes retains
-sockets, and perf also owns long-lived profiler resources. Avoid enabling those
-collectors until upstream defines resource cleanup. Supervisord still shares its
-client between runtimes, and the Linux filesystem stuck-mount cache is shared.
-These upstream limitations must be resolved before treating this draft as ready
-for production.
+Receiver shutdown calls the shutdown function of its own upstream Runtime,
+which cancels the context supplied to collector updates. The receiver constructs
+that runtime independently of the startup context, so canceling startup does not
+cancel later scrapes. Upstream systemd collection uses the runtime context for
+its D-Bus operations; other collectors may not support cancellation.
+
+The pinned upstream implementation now keeps the supervisord client and Linux
+filesystem stuck-mount tracking on each collector instance. Persistent resource
+cleanup remains incomplete: Runtime.Shutdown cancels work but does not close
+ethtool sockets or perf profiler resources. Avoid repeated creation of those
+collectors until upstream adds resource cleanup. This remains a draft integration
+until the runtime is released and the resource-lifecycle limitation is resolved.
 
 ## Validation
 
 `go test -race ./...` checks configuration defaults and rejection, two concurrent
 textfile receivers with distinct fixture values, startup-context cancellation,
-and independent shutdown. Linux additionally verifies CPU and meminfo runtimes
-with separate checked-in procfs fixtures and no flag initialization.
+independent runtime cancellation, and cleanup on registration failure. Linux
+additionally verifies CPU and meminfo runtimes with separate checked-in procfs
+fixtures and no flag initialization.

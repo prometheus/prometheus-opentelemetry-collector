@@ -51,4 +51,4 @@ replaces:
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/ecs => ../receivers/ecs
   - github.com/prometheus/prometheus-opentelemetry-collector/receivers/node => ../receivers/node
   # Dependency replaces from receiver modules do not propagate into the distribution.
-  - github.com/prometheus/node_exporter => github.com/nicolastakashi/node_exporter v0.0.0-20261110133023-1b55828f08b3
+  - github.com/prometheus/node_exporter => github.com/nicolastakashi/node_exporter v0.0.0-20261111165904-ab590e822c83
