@@ -56,12 +56,26 @@ func TestFactoryDefaultsAndConfigIsolation(t *testing.T) {
 	}
 }
 
+func TestFactoryAcceptsIncludeWithDefaultExcludes(t *testing.T) {
+	t.Parallel()
+	factory := NewFactory()
+	cfg := receiverConfig(t, factory, map[string]any{
+		"collector_disable_defaults": true,
+		"collectors":                 map[string]any{"textfile": true},
+		"diskstats":                  map[string]any{"device_include": "^sd"},
+		"filesystem":                 map[string]any{"mount_points_include": "^/data", "fs_types_include": "^ext4$"},
+	})
+	_, err := factory.CreateMetrics(context.Background(), receivertest.NewNopSettings(metadata.Type), cfg, new(consumertest.MetricsSink))
+	require.NoError(t, err)
+}
+
 func TestFactoryRejectsInvalidConfig(t *testing.T) {
 	t.Parallel()
 	for name, exporter := range map[string]map[string]any{
-		"unknown field":    {"unknown_setting": true},
-		"invalid regexp":   {"cpu": map[string]any{"flags_include": "("}},
-		"invalid duration": {"filesystem": map[string]any{"mount_timeout": "soon"}},
+		"unknown field":       {"unknown_setting": true},
+		"invalid regexp":      {"cpu": map[string]any{"flags_include": "("}},
+		"invalid duration":    {"filesystem": map[string]any{"mount_timeout": "soon"}},
+		"conflicting filters": {"filesystem": map[string]any{"mount_points_include": "^/data", "mount_points_exclude": "^/tmp"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			factory := NewFactory()

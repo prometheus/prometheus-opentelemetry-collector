@@ -20,7 +20,7 @@ directly in the OpenTelemetry Collector.
 
 This draft embeds the unreleased runtime from
 [prometheus/node_exporter#3661](https://github.com/prometheus/node_exporter/pull/3661),
-pinned to commit `ab590e822c8333a58d2b3ac58a5e27b4f0d7ebdc` through a temporary
+pinned to commit `109f18416beb4181252605751a4104322c63f16a` through a temporary
 module replacement. Replace that pin with an upstream release before merging.
 The distribution manifest repeats the replacement because Go does not propagate
 replacements from dependency modules.
@@ -86,23 +86,23 @@ labels, including `node_scrape_collector_success`.
 
 ## Draft limitations
 
-Receiver shutdown calls the shutdown function of its own upstream Runtime,
-which cancels the context supplied to collector updates. The receiver constructs
-that runtime independently of the startup context, so canceling startup does not
-cancel later scrapes. Upstream systemd collection uses the runtime context for
-its D-Bus operations; other collectors may not support cancellation.
+Receiver shutdown calls the shutdown function of its own upstream Runtime.
+The pinned runtime closes ethtool sockets, stops and closes perf profilers, and
+closes supervisord's idle HTTP connections. Repeated shutdown is supported.
+Collector updates no longer accept a context, so shutdown does not cancel
+in-flight collection. Stop gathering before releasing a runtime's resources.
 
-The pinned upstream implementation now keeps the supervisord client and Linux
-filesystem stuck-mount tracking on each collector instance. Persistent resource
-cleanup remains incomplete: Runtime.Shutdown cancels work but does not close
-ethtool sockets or perf profiler resources. Avoid repeated creation of those
-collectors until upstream adds resource cleanup. This remains a draft integration
-until the runtime is released and the resource-lifecycle limitation is resolved.
+The upstream runtime keeps collector configuration, the supervisord client, NTP
+leap state, and filesystem stuck-mount tracking separate for each instance.
+This remains a draft integration until the runtime is released. Cleanup of
+partially initialized perf collectors and FreeBSD devstat buffers still needs
+upstream review. The pinned supervisord Unix-socket transport also inherits HTTP
+proxy settings, which can break collection when `HTTP_PROXY` is configured.
 
 ## Validation
 
 `go test -race ./...` checks configuration defaults and rejection, two concurrent
 textfile receivers with distinct fixture values, startup-context cancellation,
-independent runtime cancellation, and cleanup on registration failure. Linux
+independent runtime resource cleanup, and cleanup on registration failure. Linux
 additionally verifies CPU and meminfo runtimes with separate checked-in procfs
 fixtures and no flag initialization.

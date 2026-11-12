@@ -99,4 +99,4 @@ require (
 )
 
 // Temporary dependency on prometheus/node_exporter#3661 for embedding review.
-replace github.com/prometheus/node_exporter => github.com/nicolastakashi/node_exporter v0.0.0-20261111165904-ab590e822c83
+replace github.com/prometheus/node_exporter => github.com/nicolastakashi/node_exporter v0.0.0-20261111203557-109f18416beb

@@ -6,12 +6,17 @@ package node
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	nodecollector "github.com/prometheus/node_exporter/collector"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/node_exporter/config"
 	"github.com/prometheus/prometheus-opentelemetry-collector/receivers/node/internal/metadata"
 	"github.com/stretchr/testify/require"
@@ -32,74 +37,56 @@ func TestLifecycleRejectsInvalidConfiguration(t *testing.T) {
 	require.ErrorContains(t, err, "unknown collector")
 }
 
-type contextCollector struct {
-	contexts chan context.Context
-	block    bool
-}
-
-func (c *contextCollector) Update(ctx context.Context, _ chan<- prometheus.Metric) error {
-	c.contexts <- ctx
-	if c.block {
-		<-ctx.Done()
-		return ctx.Err()
-	}
-	return nil
-}
-
-func TestLifecycleShutdownCancelsOnlyItsRuntime(t *testing.T) {
+// A real HTTP connection makes upstream resource ownership observable through
+// the lifecycle adapter, without depending on internal runtime state.
+func TestLifecycleShutdownClosesOnlyItsRuntime(t *testing.T) {
 	t.Parallel()
-	var collectors []*contextCollector
-	manager := &lifecycleManager{newRuntime: func(cfg config.Config, logger *slog.Logger) (exporterRuntime, error) {
-		runtime, err := nodecollector.NewRuntime(cfg, logger)
-		if err != nil {
-			return nil, err
-		}
-		// Keep the real upstream runtime/context plumbing and replace only the
-		// data source, so cancellation can be observed without a system D-Bus.
-		c := &contextCollector{contexts: make(chan context.Context, 1), block: len(collectors) == 0}
-		collectors = append(collectors, c)
-		runtime.Collectors()[0].(*nodecollector.NodeCollector).Collectors = map[string]nodecollector.Collector{"context": c}
-		return runtime, nil
-	}}
-	cfg := config.NewConfigWithDefaults()
-	cfg.CollectorDisableDefaults = true
+	manager := newLifecycleManager()
 	settings := receivertest.NewNopSettings(metadata.Type)
 	startup, cancelStartup := context.WithCancel(context.Background())
 	defer cancelStartup()
-	first, stopFirst, err := manager.Start(startup, settings, &cfg)
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, stopFirst(context.Background())) })
-	second, stopSecond, err := manager.Start(startup, settings, &cfg)
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, stopSecond(context.Background())) })
-	cancelStartup()
-
-	gathered := make(chan error, 1)
-	go func() { _, err := first.Gather(); gathered <- err }()
-	var firstContext context.Context
-	select {
-	case firstContext = <-collectors[0].contexts:
-	case <-time.After(5 * time.Second):
-		t.Fatal("first runtime did not start collection")
-	}
-	require.NoError(t, firstContext.Err(), "startup cancellation must not cancel collection")
-	_, err = second.Gather()
-	require.NoError(t, err)
-	secondContext := <-collectors[1].contexts
-	require.NoError(t, secondContext.Err())
-
-	require.NoError(t, stopFirst(context.Background()))
-	require.ErrorIs(t, firstContext.Err(), context.Canceled)
-	require.NoError(t, secondContext.Err(), "another runtime must remain active")
-	select {
-	case err := <-gathered:
+	registries := make([]*prometheus.Registry, 2)
+	stops := make([]func(context.Context) error, 2)
+	closed := make([]atomic.Int32, 2)
+	for i := range registries {
+		srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			fmt.Fprint(w, `<?xml version="1.0"?><methodResponse><params><param><value><array><data><value><struct>
+<member><name>name</name><value><string>fixture</string></value></member>
+<member><name>group</name><value><string>fixture</string></value></member>
+<member><name>state</name><value><int>20</int></value></member>
+</struct></value></data></array></value></param></params></methodResponse>`)
+		}))
+		srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+			if state == http.StateClosed {
+				closed[i].Add(1)
+			}
+		}
+		srv.Start()
+		t.Cleanup(srv.Close)
+		cfg := config.NewConfigWithDefaults()
+		cfg.CollectorDisableDefaults = true
+		cfg.Collectors = map[string]bool{"supervisord": true}
+		cfg.Supervisord.URL = srv.URL + "/RPC2"
+		registry, stop, err := manager.Start(startup, settings, &cfg)
 		require.NoError(t, err)
-	case <-time.After(5 * time.Second):
-		t.Fatal("runtime shutdown did not unblock collection")
+		t.Cleanup(func() { require.NoError(t, stop(context.Background())) })
+		registries[i], stops[i] = registry, stop
 	}
-	require.NoError(t, stopFirst(context.Background()), "shutdown must be repeatable")
-	require.NoError(t, stopSecond(context.Background()))
-	require.ErrorIs(t, secondContext.Err(), context.Canceled)
+	cancelStartup()
+	for _, registry := range registries {
+		count, err := testutil.GatherAndCount(registry, "node_supervisord_up")
+		require.NoError(t, err)
+		require.Equal(t, 1, count, "startup cancellation must not prevent collection")
+	}
+	require.NoError(t, stops[0](context.Background()))
+	require.Eventually(t, func() bool { return closed[0].Load() == 1 }, 5*time.Second, 10*time.Millisecond)
+	require.Zero(t, closed[1].Load(), "another runtime's connection must remain open")
+	count, err := testutil.GatherAndCount(registries[1], "node_supervisord_up")
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	require.NoError(t, stops[0](context.Background()), "shutdown must be repeatable")
+	require.NoError(t, stops[1](context.Background()))
+	require.Eventually(t, func() bool { return closed[1].Load() == 1 }, 5*time.Second, 10*time.Millisecond)
 }
 
 type registrationFailureRuntime struct {
