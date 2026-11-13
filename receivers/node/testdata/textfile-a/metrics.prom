@@ -1,0 +1,3 @@
+# HELP node_embedding_fixture_value Fixture value used to verify receiver isolation.
+# TYPE node_embedding_fixture_value gauge
+node_embedding_fixture_value 7
