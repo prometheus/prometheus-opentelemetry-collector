@@ -20,7 +20,7 @@ directly in the OpenTelemetry Collector.
 
 This draft embeds the unreleased runtime from
 [prometheus/node_exporter#3661](https://github.com/prometheus/node_exporter/pull/3661),
-pinned to commit `109f18416beb4181252605751a4104322c63f16a` through a temporary
+pinned to commit `05c0591a67bce359eaf472b6126db40fd607b79c` through a temporary
 module replacement. Replace that pin with an upstream release before merging.
 The distribution manifest repeats the replacement because Go does not propagate
 replacements from dependency modules.
@@ -94,10 +94,13 @@ in-flight collection. Stop gathering before releasing a runtime's resources.
 
 The upstream runtime keeps collector configuration, the supervisord client, NTP
 leap state, and filesystem stuck-mount tracking separate for each instance.
-This remains a draft integration until the runtime is released. Cleanup of
-partially initialized perf collectors and FreeBSD devstat buffers still needs
-upstream review. The pinned supervisord Unix-socket transport also inherits HTTP
-proxy settings, which can break collection when `HTTP_PROXY` is configured.
+The pinned runtime now frees the FreeBSD devstat device buffer and rolls back
+tracepoint profilers when initialization fails. This remains a draft integration
+until the runtime is released. The supervisord Unix-socket transport still
+inherits HTTP proxy settings, which can break collection when `HTTP_PROXY` is
+configured. Perf CPU selections should not contain duplicate CPUs or overlapping
+ranges: the pinned collector overwrites handles for repeated CPUs and cannot
+close all of them on shutdown.
 
 ## Validation
 
