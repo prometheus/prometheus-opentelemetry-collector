@@ -18,8 +18,8 @@ as an OpenTelemetry Collector receiver.
 
 ## Configuration
 
-`scrape_interval` controls how often the embedded exporter is polled (default
-`30s`). `exporter_config` is decoded onto the upstream
+`scrape_interval` controls how often the embedded exporter is polled.
+`exporter_config` is decoded onto the upstream
 `yet-another-cloudwatch-exporter` (YACE) `config.Config`. The CloudWatch
 discovery/static jobs are **not** configured here — they live in a separate YACE
 config file referenced by `scrape_config_file`.
@@ -29,19 +29,31 @@ receivers:
   yace_exporter:
     scrape_interval: 60s
     exporter_config:
-      scrape_config_file: /etc/otel/yace-config.yaml   # required
+      scrape_config_file: /etc/otel/yace-config.yaml
 ```
 
-| `exporter_config` key | Description |
-| --- | --- |
-| `scrape_config_file` | _(required)_ Path to the YACE config file (discovery/static jobs, regions, roles). |
-| `metrics_per_query` | Max CloudWatch metrics per `GetMetricData` call. |
-| `labels_snake_case` | Emit labels in snake_case. |
-| `tagging_api_concurrency` | Concurrency for the resource-tagging API. |
-| `cloudwatch_concurrency` | CloudWatch API concurrency (`single_limit`, `per_api_limit_enabled`, `list_metrics`, `get_metric_data`, `get_metric_statistics`). |
-| `feature_flags` | YACE feature flags (e.g. `aws-sdk-v2`). |
-| `fips_enabled` | Use FIPS AWS endpoints. |
-| `disable_account_alias_lookup` | Skip the IAM `ListAccountAliases` call and leave the `account_alias` label empty (default `false`). |
+<!-- configdoc -->
+
+Default values are updated by `make gogenerate`; edit descriptions here.
+Dotted keys describe nested fields, and `null` denotes a nil default.
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `exporter_config.cloudwatch_concurrency.get_metric_data` | `5` | Concurrency limit for `GetMetricData` when per-API limits are enabled. |
+| `exporter_config.cloudwatch_concurrency.get_metric_statistics` | `5` | Concurrency limit for `GetMetricStatistics` when per-API limits are enabled. |
+| `exporter_config.cloudwatch_concurrency.list_metrics` | `5` | Concurrency limit for `ListMetrics` when per-API limits are enabled. |
+| `exporter_config.cloudwatch_concurrency.per_api_limit_enabled` | `false` | Use separate concurrency limits for each CloudWatch API. |
+| `exporter_config.cloudwatch_concurrency.single_limit` | `5` | Concurrency limit used when per-API limits are disabled. |
+| `exporter_config.disable_account_alias_lookup` | `false` | Skip the IAM `ListAccountAliases` call and leave the `account_alias` label empty. |
+| `exporter_config.feature_flags` | `[]` | YACE feature flags (for example, `aws-sdk-v2`). |
+| `exporter_config.fips_enabled` | `false` | Use FIPS AWS endpoints. |
+| `exporter_config.labels_snake_case` | `false` | Emit labels in snake_case. |
+| `exporter_config.metrics_per_query` | `500` | Maximum CloudWatch metrics per `GetMetricData` call. |
+| `exporter_config.scrape_config_file` | `"config.yml"` | Path to the YACE config file (discovery/static jobs, regions, roles). The file must exist. |
+| `exporter_config.tagging_api_concurrency` | `5` | Concurrency for the resource-tagging API. |
+| `scrape_interval` | `"30s"` | How often to collect metrics from the embedded exporter. |
+
+<!-- /configdoc -->
 
 `scrape_config_file` takes a standard YACE config — the same format the
 standalone exporter's `--config.file` accepts. See YACE's

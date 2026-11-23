@@ -43,6 +43,7 @@ build: $(BUILDER_BIN)
 	"$(BUILDER_BIN)" --config "$(MANIFEST)"
 
 test:
+	$(GOCMD) -C "$(SRC_ROOT)/tools/configdoc" test ./...
 	@for module in $(RECEIVER_MODULES); do \
 		echo "==> go test ./... in $$module"; \
 		(cd "$(SRC_ROOT)/$$module" && $(GOCMD) test ./...); \

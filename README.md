@@ -22,7 +22,7 @@ Generated sources and binaries live in `_build/` and are not committed.
 ## Local development
 
 ```bash
-make gogenerate       # update generated receiver metadata
+make gogenerate       # update generated receiver metadata and config documentation
 make check-metadata   # verify generated metadata is fresh
 make test             # test local receiver modules
 make check            # generate and compile the collector distribution
@@ -35,3 +35,13 @@ make clean            # remove generated artifacts
 1. Edit `builder-config.yaml`.
 2. For new local receivers, add `metadata.yaml`, `doc.go`, receiver README, and generated metadata files.
 3. Run `make gogenerate`, `make check-metadata`, `make test`, and `make check`.
+
+## Configuration documentation
+
+After changing configuration or upgrading an exporter dependency, run
+`make gogenerate` to refresh the Stackdriver and YACE README default columns.
+Descriptions and required-field notes are maintained directly in the README;
+new or removed fields need matching table rows. The small drivers in
+`gen_configdoc.go` pass factory defaults to the standalone
+[`tools/configdoc`](tools/configdoc) module without starting receivers.
+Generation is explicit and is not part of `go build`.

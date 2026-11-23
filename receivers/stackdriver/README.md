@@ -18,8 +18,8 @@ as an OpenTelemetry Collector receiver.
 
 ## Configuration
 
-`scrape_interval` controls how often the embedded exporter is polled (default
-`30s`). `exporter_config` is decoded directly onto the upstream
+`scrape_interval` controls how often the embedded exporter is polled.
+`exporter_config` is decoded directly onto the upstream
 `stackdriver_exporter` `config.Config`; its keys are the snake_case form of that
 struct's fields.
 
@@ -28,34 +28,42 @@ receivers:
   stackdriver_exporter:
     scrape_interval: 60s
     exporter_config:
-      project_ids: ["my-project"]              # required
+      project_ids: ["my-project"]
       metrics_prefixes:                        # required
         - compute.googleapis.com/instance
         - loadbalancing.googleapis.com/https
       aggregate_deltas: true                   # see note below
 ```
 
-| `exporter_config` key | Default | Description |
+<!-- configdoc -->
+
+Default values are updated by `make gogenerate`; edit descriptions here.
+Dotted keys describe nested fields, and `null` denotes a nil default.
+
+| Key | Default | Description |
 | --- | --- | --- |
-| `project_ids` | _(required)_ | GCP project IDs to scrape. |
-| `metrics_prefixes` | _(required)_ | Monitoring metric-type prefixes to collect. |
-| `metrics_interval` | `5m` | Time range queried per scrape. |
-| `metrics_offset` | `0s` | Offset applied to the query time range. |
-| `metrics_ingest_delay` | `false` | Account for GCP ingest delay in the query window. |
-| `aggregate_deltas` | `false` | Aggregate GCP DELTA metrics into cumulative series — see note. |
-| `aggregate_deltas_ttl` | `30m` | Retention for aggregated deltas. |
-| `fill_missing_labels` | `true` | Fill absent label values so same-named metrics share a label set. |
-| `drop_delegated_projects` | `false` | Drop metrics from delegated projects. |
-| `projects_filter` | `""` | Project filter expression. |
-| `filters` | _(none)_ | Extra metric filters, `<prefix>:<filter>`. |
-| `universe_domain` | `googleapis.com` | GCP universe domain. |
-| `max_retries` | `0` | Monitoring API retry count. |
-| `http_timeout` | `10s` | Monitoring API HTTP timeout. |
-| `max_backoff` | `5s` | Max retry backoff. |
-| `backoff_jitter` | `1s` | Retry backoff jitter. |
-| `retry_statuses` | `[503]` | HTTP statuses to retry. |
-| `descriptor_cache_ttl` | `0s` | Metric-descriptor cache TTL (`0` disables). |
-| `descriptor_cache_only_google` | `true` | Cache only Google-defined descriptors. |
+| `exporter_config.aggregate_deltas` | `false` | Aggregate GCP DELTA metrics into cumulative series; see the note below. |
+| `exporter_config.aggregate_deltas_ttl` | `"30m0s"` | Retention for aggregated deltas. |
+| `exporter_config.backoff_jitter` | `"1s"` | Retry backoff jitter. |
+| `exporter_config.descriptor_cache_only_google` | `true` | Cache only Google-defined descriptors. |
+| `exporter_config.descriptor_cache_ttl` | `"0s"` | Metric-descriptor cache TTL (`0s` disables). |
+| `exporter_config.drop_delegated_projects` | `false` | Drop metrics from delegated projects. |
+| `exporter_config.fill_missing_labels` | `true` | Fill absent label values so same-named metrics share a label set. |
+| `exporter_config.filters` | `null` | Extra metric filters, `<prefix>:<filter>`. |
+| `exporter_config.http_timeout` | `"10s"` | Monitoring API HTTP timeout. |
+| `exporter_config.max_backoff` | `"5s"` | Maximum retry backoff. |
+| `exporter_config.max_retries` | `0` | Monitoring API retry count. |
+| `exporter_config.metrics_ingest_delay` | `false` | Account for GCP ingest delay in the query window. |
+| `exporter_config.metrics_interval` | `"5m0s"` | Time range queried per scrape. |
+| `exporter_config.metrics_offset` | `"0s"` | Offset applied to the query time range. |
+| `exporter_config.metrics_prefixes` | `null` | Required. Monitoring metric-type prefixes to collect. |
+| `exporter_config.project_ids` | `null` | GCP project IDs to scrape. If no project IDs or filter results are available, the exporter discovers the default GCP project. |
+| `exporter_config.projects_filter` | `""` | Project filter expression. |
+| `exporter_config.retry_statuses` | `[503]` | HTTP statuses to retry. |
+| `exporter_config.universe_domain` | `"googleapis.com"` | GCP universe domain. |
+| `scrape_interval` | `"30s"` | How often to collect metrics from the embedded exporter. |
+
+<!-- /configdoc -->
 
 > **`aggregate_deltas` defaults to `false`.** Many GCP metrics — e.g.
 > `loadbalancing.googleapis.com/https/*_latencies` — are DELTA metrics. With
