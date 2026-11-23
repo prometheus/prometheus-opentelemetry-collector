@@ -12,6 +12,7 @@
 // limitations under the License.
 
 //go:generate make mdatagen
+//go:generate go run gen_configdoc.go
 
 // Package stackdriver provides a Collector receiver backed by the Prometheus
 // Stackdriver exporter.

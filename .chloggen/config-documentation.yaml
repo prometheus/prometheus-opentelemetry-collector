@@ -1,0 +1,4 @@
+change_type: enhancement
+component: all
+note: Update Stackdriver and YACE configuration documentation defaults through go generate.
+issues: [35]

@@ -12,3 +12,4 @@ module-sets:
 
 excluded-modules:
   - github.com/prometheus/prometheus-opentelemetry-collector/internal/tools
+  - github.com/prometheus/prometheus-opentelemetry-collector/tools/configdoc
